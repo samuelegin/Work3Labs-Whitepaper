@@ -19,12 +19,10 @@ const problems = [
 export default function Problem() {
   return (
     <div id="problem" className="bg-ink px-[68px] py-24 relative overflow-hidden max-md:px-6 max-md:py-14">
-      {/* mesh */}
       <div className="absolute inset-0 pointer-events-none overflow-hidden">
         <div className="absolute top-[-20%] right-[-10%] w-[60vw] h-[60vw] rounded-full" style={{ background: 'radial-gradient(ellipse, rgba(45,252,68,0.10) 0%, transparent 65%)' }} />
         <div className="absolute bottom-[-10%] left-[-15%] w-[55vw] h-[55vw] rounded-full" style={{ background: 'radial-gradient(ellipse, rgba(60,180,255,0.07) 0%, transparent 65%)' }} />
       </div>
-
       <div className="relative z-10">
         <span className="reveal font-mono text-[10px] tracking-[0.14em] uppercase text-white/30 block mb-[18px]">
           Section 02 — The Problem
@@ -36,7 +34,6 @@ export default function Problem() {
         <p className="reveal text-[14.5px] font-light text-white/40 leading-[1.74] max-w-[480px] tracking-[-0.01em]">
           Projects struggle to find reliable contributors, form effective teams, and measure real performance beyond resumes and informal social signals.
         </p>
-
         <div className="mt-[52px] grid grid-cols-3 border border-white/[0.07] rounded-[14px] overflow-hidden max-md:grid-cols-1">
           {problems.map((p, i) => (
             <div key={p.n} className={`px-9 py-10 ${i < problems.length - 1 ? 'border-r border-white/[0.07] max-md:border-r-0 max-md:border-b' : ''} hover:bg-white/[0.03] transition-colors`}>

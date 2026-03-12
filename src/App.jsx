@@ -34,7 +34,7 @@ export default function App() {
       <Route path="/admin/forgot-password"  element={<AdminForgotPassword />} />
 
       {/* Protected admin routes */}
-      <Route path="/admin"           element={<RequireAuth><Admin /></RequireAuth>} />
+      <Route path="/admin" element={<RequireAuth><Admin /></RequireAuth>} />
       <Route path="/admin/dashboard" element={<RequireAuth><Admin /></RequireAuth>} />
 
       {/* Fallback — redirect old /admin path */}

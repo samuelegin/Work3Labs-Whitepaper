@@ -54,7 +54,7 @@ async function request(method, path, body) {
 
 function qs(params) {
   const p = Object.entries(params).filter(([, v]) => v !== undefined && v !== '')
-  return p.length ? '?' + new URLSearchParams(p).toString() : ''
+   return p.length ? '?' + new URLSearchParams(p).toString() : ''
 }
 
 // ── Applicants ────────────────────────────────────────────────────────────────
