@@ -149,7 +149,7 @@ export default function Apply() {
               {/* Title */}
               <h1 className="font-serif font-extralight leading-[0.93] tracking-[-0.05em] text-ink mb-3.5"
                 style={{ fontSize: 'clamp(38px,6vw,58px)', opacity: 0, animation: 'up 0.9s 0.12s both' }}>
-                Limited spots.<br /><em className="italic text-green">Apply now.</em>
+                500 spots.<br /><em className="italic text-green">Apply now.</em>
               </h1>
 
               <p className="text-[14.5px] font-light text-[#888] leading-[1.68] tracking-[-0.01em] mb-[30px]"
