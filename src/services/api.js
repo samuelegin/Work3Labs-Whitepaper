@@ -54,7 +54,7 @@ async function request(method, path, body) {
 
 function qs(params) {
   const p = Object.entries(params).filter(([, v]) => v !== undefined && v !== '')
-   return p.length ? '?' + new URLSearchParams(p).toString() : ''
+  return p.length ? '?' + new URLSearchParams(p).toString() : ''
 }
 
 // ── Applicants ────────────────────────────────────────────────────────────────
@@ -145,4 +145,27 @@ export async function adminForgotPassword({ email }) {
  */
 export async function adminLogout() {
   return request('POST', '/admin/logout')
+}
+
+/**
+ * POST /api/admin/setup
+ * First-time admin registration. Only succeeds when no admin account exists yet.
+ * body: { name, email, password, setupKey }
+ * → { token: string, admin: { id, email, name } }
+ *
+ * setupKey is a secret env var on the backend (ADMIN_SETUP_KEY) that prevents
+ * anyone from calling this endpoint after initial setup.
+ */
+export async function adminSetup({ name, email, password, setupKey }) {
+  return request('POST', '/admin/setup', { name, email, password, setupKey })
+}
+
+/**
+ * POST /api/admin/reset-password
+ * Complete a password reset using the token from the email link.
+ * body: { token, password }
+ * → { message: string }
+ */
+export async function adminResetPassword({ token, password }) {
+  return request('POST', '/admin/reset-password', { token, password })
 }
