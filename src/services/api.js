@@ -169,3 +169,78 @@ export async function adminSetup({ name, email, password, setupKey }) {
 export async function adminResetPassword({ token, password }) {
   return request('POST', '/admin/reset-password', { token, password })
 }
+
+// ── Admin team management ─────────────────────────────────────────────────────
+
+/**
+ * GET /api/admin/team
+ * List all admin accounts + pending invites.
+ * Owner only.
+ * → { admins: Admin[], invites: Invite[] }
+ *
+ * Admin:  { id, name, email, role, joinedAt, lastLoginAt }
+ * Invite: { id, email, createdAt, expiresAt }
+ */
+export async function fetchAdmins() {
+  return request('GET', '/admin/team')
+}
+
+/**
+ * POST /api/admin/team/invite
+ * Send an invite email to a new admin.
+ * Owner only.
+ * body: { email }
+ * → { invite: Invite }
+ */
+export async function inviteAdmin({ email }) {
+  return request('POST', '/admin/team/invite', { email })
+}
+
+/**
+ * DELETE /api/admin/team/:id
+ * Remove an admin account.
+ * Owner only. Cannot remove yourself.
+ * → { message: string }
+ */
+export async function removeAdmin(id) {
+  return request('DELETE', `/admin/team/${id}`)
+}
+
+/**
+ * DELETE /api/admin/team/invites/:id
+ * Cancel a pending invite.
+ * Owner only.
+ * → { message: string }
+ */
+export async function cancelInvite(id) {
+  return request('DELETE', `/admin/team/invites/${id}`)
+}
+
+/**
+ * POST /api/admin/team/invites/:id/resend
+ * Resend an invite email (resets expiry).
+ * Owner only.
+ * → { invite: Invite }
+ */
+export async function resendInvite(id) {
+  return request('POST', `/admin/team/invites/${id}/resend`)
+}
+
+/**
+ * GET /api/admin/accept-invite?token=...
+ * Validate an invite token before showing the accept form.
+ * → { email: string, valid: true } or 400/404
+ */
+export async function validateInviteToken(token) {
+  return request('GET', `/admin/accept-invite?token=${encodeURIComponent(token)}`)
+}
+
+/**
+ * POST /api/admin/accept-invite
+ * Complete invite — set name + password, activate account.
+ * body: { token, name, password }
+ * → { token: string, admin: { id, email, name } }
+ */
+export async function acceptAdminInvite({ token, name, password }) {
+  return request('POST', '/admin/accept-invite', { token, name, password })
+}

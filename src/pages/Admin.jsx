@@ -1,8 +1,20 @@
-import { useState, useMemo } from 'react'
+/**
+ * Work3 Labs — Admin Dashboard v2
+ *
+ * Changes vs v1:
+ *  1. Invite token removed from approve modal — backend generates it
+ *  2. Pagination: GET /admin/applicants?page=&limit=50
+ *  3. Column sorting: Applied / Country / Status
+ *  4. Bulk select + Approve Selected / Reject Selected
+ *  5. Pod Creation tab — form a team from approved talents + a project
+ */
+
+import { useState, useMemo, useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import { useApplicants } from '../hooks/useApplicants'
 import { usePods }        from '../hooks/usePods'
-import { fetchApplicants } from '../services/api'
+import { useAuth }        from '../hooks/useAuth'
+import { fetchApplicants, fetchAdmins, inviteAdmin, removeAdmin, cancelInvite, resendInvite } from '../services/api'
 
 // ── Design tokens ─────────────────────────────────────────────────────────────
 
@@ -957,15 +969,281 @@ function ApplicantPanel({ type, onBroadcast, showToast }) {
   )
 }
 
+// ── Team Panel (owner only) ───────────────────────────────────────────────────
+
+function TeamPanel({ showToast, currentAdmin }) {
+  const [admins,      setAdmins]      = useState([])
+  const [invites,     setInvites]     = useState([])
+  const [loading,     setLoading]     = useState(true)
+  const [error,       setError]       = useState(null)
+  const [inviteEmail, setInviteEmail] = useState('')
+  const [inviteErr,   setInviteErr]   = useState('')
+  const [sending,     setSending]     = useState(false)
+  const [removing,    setRemoving]    = useState(null)  // id being removed
+  const [confirmRemove, setConfirmRemove] = useState(null) // admin object pending confirm
+
+  async function load() {
+    setLoading(true); setError(null)
+    const { data, error } = await fetchAdmins()
+    setLoading(false)
+    if (error) { setError(error); return }
+    setAdmins(data.admins ?? [])
+    setInvites(data.invites ?? [])
+  }
+
+  useEffect(() => { load() }, [])
+
+  async function handleInvite() {
+    setInviteErr('')
+    if (!inviteEmail.trim()) { setInviteErr('Email is required'); return }
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(inviteEmail.trim())) { setInviteErr('Enter a valid email'); return }
+    setSending(true)
+    const { data, error } = await inviteAdmin({ email: inviteEmail.trim() })
+    setSending(false)
+    if (error) {
+      const msg = error.toLowerCase().includes('already') || error.includes('409')
+        ? 'An admin account or pending invite already exists for this email.'
+        : error
+      setInviteErr(msg); return
+    }
+    setInviteEmail('')
+    setInvites(prev => [data.invite, ...prev])
+    showToast(`Invite sent to ${inviteEmail.trim()}`)
+  }
+
+  async function handleRemove(admin) {
+    setRemoving(admin.id)
+    setConfirmRemove(null)
+    const { error } = await removeAdmin(admin.id)
+    setRemoving(null)
+    if (error) { showToast(`Failed to remove admin: ${error}`, 'error'); return }
+    setAdmins(prev => prev.filter(a => a.id !== admin.id))
+    showToast(`${admin.name} has been removed`)
+  }
+
+  async function handleCancelInvite(invite) {
+    const { error } = await cancelInvite(invite.id)
+    if (error) { showToast(`Failed to cancel invite: ${error}`, 'error'); return }
+    setInvites(prev => prev.filter(i => i.id !== invite.id))
+    showToast('Invite cancelled')
+  }
+
+  async function handleResend(invite) {
+    const { data, error } = await resendInvite(invite.id)
+    if (error) { showToast(`Failed to resend: ${error}`, 'error'); return }
+    setInvites(prev => prev.map(i => i.id === invite.id ? data.invite : i))
+    showToast(`Invite resent to ${invite.email}`)
+  }
+
+  function formatDate(iso) {
+    if (!iso) return '—'
+    return new Date(iso).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })
+  }
+
+  function timeAgo(iso) {
+    if (!iso) return 'Never'
+    const diff = Date.now() - new Date(iso).getTime()
+    const mins  = Math.floor(diff / 60000)
+    const hours = Math.floor(diff / 3600000)
+    const days  = Math.floor(diff / 86400000)
+    if (mins  < 2)   return 'Just now'
+    if (mins  < 60)  return `${mins}m ago`
+    if (hours < 24)  return `${hours}h ago`
+    if (days  < 30)  return `${days}d ago`
+    return formatDate(iso)
+  }
+
+  if (loading) return (
+    <div className="flex items-center justify-center py-20">
+      <Spinner size={24} dark />
+    </div>
+  )
+
+  if (error) return <ErrorBanner message={error} onRetry={load} />
+
+  const isCurrentAdmin = (id) => currentAdmin?.id === id
+
+  return (
+    <div className="max-w-[760px]">
+
+      {/* Invite form */}
+      <div className="bg-white border border-black/[0.07] rounded-[14px] p-6 mb-8">
+        <h3 className="font-serif text-[17px] font-light tracking-[-0.03em] text-ink mb-1">
+          Invite an admin
+        </h3>
+        <p className="text-[13px] font-light text-[#999] mb-5">
+          They'll receive an email with a link to set up their account. Invite expires in 48h.
+        </p>
+        <div className="flex gap-3 items-start">
+          <div className="flex-1">
+            <input
+              type="email"
+              value={inviteEmail}
+              onChange={e => { setInviteEmail(e.target.value); setInviteErr('') }}
+              onKeyDown={e => e.key === 'Enter' && handleInvite()}
+              placeholder="colleague@work3labs.com"
+              className={[
+                'w-full font-sans text-[13.5px] font-light bg-white text-ink',
+                'border rounded-[10px] px-4 py-3 outline-none transition-all',
+                'placeholder-[#D0D0D0]',
+                inviteErr
+                  ? 'border-red-300 focus:border-red-400 focus:shadow-[0_0_0_3px_rgba(239,68,68,0.08)]'
+                  : 'border-black/[0.09] focus:border-[#1DC433] focus:shadow-[0_0_0_3px_rgba(45,252,68,0.08)]',
+              ].join(' ')}
+            />
+            {inviteErr && (
+              <p className="mt-1.5 text-[12px] text-red-500 font-light flex items-center gap-1.5">
+                <i className="bi bi-exclamation-circle text-[11px]" />{inviteErr}
+              </p>
+            )}
+          </div>
+          <button
+            onClick={handleInvite}
+            disabled={sending}
+            className="flex items-center gap-2 bg-ink text-paper px-5 py-3 rounded-[10px] font-sans text-[13.5px] font-medium hover:bg-[#1A1A1A] transition-colors border-none cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap flex-shrink-0"
+          >
+            {sending ? <><Spinner size={15} />Sending…</> : <><i className="bi bi-send text-[13px]" />Send invite</>}
+          </button>
+        </div>
+      </div>
+
+      {/* Active admins */}
+      <div className="mb-8">
+        <h3 className="font-mono text-[10px] tracking-[0.14em] uppercase text-[#AAA] mb-4">
+          Active admins — {admins.length}
+        </h3>
+        <div className="bg-white border border-black/[0.07] rounded-[14px] overflow-hidden divide-y divide-black/[0.05]">
+          {admins.map(admin => (
+            <div key={admin.id} className="flex items-center gap-4 px-6 py-4">
+              {/* Avatar initials */}
+              <div className="w-9 h-9 rounded-full bg-[#F3F4F6] flex items-center justify-center flex-shrink-0">
+                <span className="font-mono text-[11px] text-[#666] uppercase">
+                  {(admin.name || '?').split(' ').map(w => w[0]).slice(0, 2).join('')}
+                </span>
+              </div>
+
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <span className="text-[14px] font-medium text-ink truncate">{admin.name}</span>
+                  {admin.role === 'owner' && (
+                    <span className="font-mono text-[9px] tracking-[0.1em] uppercase bg-[#2DFC44] text-ink px-2 py-0.5 rounded-full flex-shrink-0">
+                      Owner
+                    </span>
+                  )}
+                  {isCurrentAdmin(admin.id) && (
+                    <span className="font-mono text-[9px] tracking-[0.1em] uppercase text-[#AAA] flex-shrink-0">you</span>
+                  )}
+                </div>
+                <div className="flex items-center gap-3 mt-0.5 flex-wrap">
+                  <span className="text-[12.5px] font-light text-[#999] truncate">{admin.email}</span>
+                  <span className="text-[11px] font-mono text-[#CCC] flex-shrink-0">
+                    Last login: {timeAgo(admin.lastLoginAt)}
+                  </span>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2 flex-shrink-0">
+                <span className="font-mono text-[10px] text-[#CCC] hidden sm:block">
+                  {formatDate(admin.joinedAt)}
+                </span>
+                {/* Can't remove yourself or owner */}
+                {!isCurrentAdmin(admin.id) && admin.role !== 'owner' && (
+                  confirmRemove?.id === admin.id ? (
+                    <div className="flex items-center gap-2" style={{ animation: 'up 0.15s both' }}>
+                      <span className="text-[12px] font-light text-[#999]">Remove?</span>
+                      <button
+                        onClick={() => handleRemove(admin)}
+                        disabled={removing === admin.id}
+                        className="font-mono text-[10px] tracking-[0.08em] uppercase text-red-500 border border-red-200 rounded-full px-3 py-1 bg-transparent cursor-pointer hover:bg-red-50 transition-colors disabled:opacity-50"
+                      >
+                        {removing === admin.id ? '…' : 'Confirm'}
+                      </button>
+                      <button
+                        onClick={() => setConfirmRemove(null)}
+                        className="font-mono text-[10px] tracking-[0.08em] uppercase text-[#BBB] border border-black/[0.09] rounded-full px-3 py-1 bg-transparent cursor-pointer hover:border-black/20 transition-colors"
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                  ) : (
+                    <button
+                      onClick={() => setConfirmRemove(admin)}
+                      className="w-8 h-8 rounded-full flex items-center justify-center text-[#CCC] hover:text-red-500 hover:bg-red-50 transition-colors bg-transparent border-none cursor-pointer"
+                      title={`Remove ${admin.name}`}
+                    >
+                      <i className="bi bi-person-dash text-[14px]" />
+                    </button>
+                  )
+                )}
+              </div>
+            </div>
+          ))}
+
+          {admins.length === 0 && (
+            <div className="px-6 py-8 text-center text-[13px] font-light text-[#BBB]">
+              No admins found
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Pending invites */}
+      {invites.length > 0 && (
+        <div>
+          <h3 className="font-mono text-[10px] tracking-[0.14em] uppercase text-[#AAA] mb-4">
+            Pending invites — {invites.length}
+          </h3>
+          <div className="bg-white border border-black/[0.07] rounded-[14px] overflow-hidden divide-y divide-black/[0.05]">
+            {invites.map(invite => (
+              <div key={invite.id} className="flex items-center gap-4 px-6 py-4">
+                <div className="w-9 h-9 rounded-full bg-amber-50 flex items-center justify-center flex-shrink-0">
+                  <i className="bi bi-envelope text-[14px] text-amber-400" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <span className="text-[14px] font-light text-ink truncate block">{invite.email}</span>
+                  <span className="text-[11.5px] font-mono text-[#CCC]">
+                    Expires {formatDate(invite.expiresAt)}
+                  </span>
+                </div>
+                <div className="flex items-center gap-2 flex-shrink-0">
+                  <button
+                    onClick={() => handleResend(invite)}
+                    className="font-mono text-[10px] tracking-[0.08em] uppercase text-[#999] border border-black/[0.09] rounded-full px-3 py-1 bg-transparent cursor-pointer hover:border-black/20 hover:text-ink transition-colors"
+                    title="Resend invite"
+                  >
+                    Resend
+                  </button>
+                  <button
+                    onClick={() => handleCancelInvite(invite)}
+                    className="w-8 h-8 rounded-full flex items-center justify-center text-[#CCC] hover:text-red-500 hover:bg-red-50 transition-colors bg-transparent border-none cursor-pointer"
+                    title="Cancel invite"
+                  >
+                    <i className="bi bi-x text-[16px]" />
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+    </div>
+  )
+}
+
 // ── Main export ───────────────────────────────────────────────────────────────
 
 const TABS = [
   { key: 'talents',  icon: 'bi-person-check', label: 'Talent Applications'  },
   { key: 'projects', icon: 'bi-buildings',    label: 'Project Applications' },
   { key: 'pods',     icon: 'bi-people-fill',  label: 'Pods'                 },
+  { key: 'team',     icon: 'bi-shield-lock',  label: 'Team',  ownerOnly: true },
 ]
 
 export default function Admin() {
+  const { admin, logout } = useAuth()
+  const isOwner = admin?.role === 'owner'
+
   const { pods, loading: loadingPods, create: createPod, reload: reloadPods } = usePods()
 
   // Separate hook instances per type so pagination/sort are independent
@@ -1007,6 +1285,9 @@ export default function Admin() {
         ? projectHook.approved
         : []
 
+  // Only show Team tab to owner
+  const visibleTabs = TABS.filter(t => !t.ownerOnly || isOwner)
+
   return (
     <div className="min-h-screen bg-paper" style={{ fontFamily: 'Outfit, sans-serif' }}>
 
@@ -1031,6 +1312,18 @@ export default function Admin() {
             <i className="bi bi-arrow-counterclockwise text-[11px]" />
             <span className="hidden sm:inline">Reset</span>
           </button>
+          {/* Signed-in admin name + logout */}
+          {admin?.name && (
+            <span className="font-mono text-[10px] tracking-[0.08em] text-[#BBB] hidden md:block truncate max-w-[120px]">
+              {admin.name}
+            </span>
+          )}
+          <button
+            onClick={logout}
+            className="font-mono text-[10px] tracking-[0.1em] uppercase text-[#BBB] hover:text-ink border border-black/[0.09] rounded-full px-2.5 sm:px-3 py-1 bg-transparent cursor-pointer hover:border-black/20 transition-colors flex items-center gap-1.5">
+            <i className="bi bi-box-arrow-right text-[11px]" />
+            <span className="hidden sm:inline">Sign out</span>
+          </button>
           <Link to="/" className="font-mono text-[10px] tracking-[0.1em] uppercase text-[#BBB] hover:text-ink transition-colors flex items-center gap-1.5">
             <i className="bi bi-arrow-left text-[11px]" />
             <span className="hidden sm:inline">Back to site</span>
@@ -1053,14 +1346,14 @@ export default function Admin() {
         {/* Tabs */}
         <div className="px-5 sm:px-10 pt-5 sm:pt-6">
           <div className="flex gap-1 border-b border-black/[0.07] mb-6 sm:mb-8 overflow-x-auto">
-            {TABS.map(t => (
+            {visibleTabs.map(t => (
               <button key={t.key} onClick={() => setTab(t.key)}
                 className={`flex items-center gap-2 px-4 sm:px-5 py-3 text-[13px] sm:text-[13.5px] border-b-2 transition-all bg-transparent border-none cursor-pointer -mb-px whitespace-nowrap
                   ${tab === t.key ? 'border-ink text-ink font-medium' : 'border-transparent text-[#AAA] hover:text-[#666] font-light'}`}>
                 <i className={`bi ${t.icon} text-[14px]`} />
                 <span className="hidden sm:inline">{t.label}</span>
-                <span className="sm:hidden">{t.key === 'talents' ? 'Talents' : t.key === 'projects' ? 'Projects' : 'Pods'}</span>
-                {t.key !== 'pods' && (
+                <span className="sm:hidden">{t.key === 'talents' ? 'Talents' : t.key === 'projects' ? 'Projects' : t.key === 'pods' ? 'Pods' : 'Team'}</span>
+                {t.key !== 'pods' && t.key !== 'team' && (
                   <span className={`font-mono text-[10px] px-2 py-0.5 rounded-full ${tab === t.key ? 'bg-ink text-paper' : 'bg-black/[0.06] text-[#999]'}`}>
                     {t.key === 'talents' ? (talentHook.loading ? '—' : talentHook.total) : (projectHook.loading ? '—' : projectHook.total)}
                   </span>
@@ -1083,6 +1376,9 @@ export default function Admin() {
                 onCreate={createPod}
                 showToast={showToast}
               />
+            )}
+            {tab === 'team' && isOwner && (
+              <TeamPanel showToast={showToast} currentAdmin={admin} />
             )}
           </div>
         </div>

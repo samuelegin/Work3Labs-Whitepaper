@@ -8,6 +8,7 @@ import AdminLogin            from './pages/AdminLogin'
 import AdminForgotPassword   from './pages/AdminForgotPassword'
 import AdminSetup            from './pages/AdminSetup'
 import AdminResetPassword    from './pages/AdminResetPassword'
+import AdminAcceptInvite     from './pages/AdminAcceptInvite'
 
 /**
  * RequireAuth — wraps any route that needs a valid session.
@@ -36,6 +37,7 @@ export default function App() {
       <Route path="/admin/forgot-password" element={<AdminForgotPassword />} />
       <Route path="/admin/reset-password"  element={<AdminResetPassword />} />
       <Route path="/admin/setup"           element={<AdminSetup />} />
+      <Route path="/admin/invite"          element={<AdminAcceptInvite />} />
 
       {/* Protected admin routes */}
       <Route path="/admin"           element={<RequireAuth><Admin /></RequireAuth>} />
