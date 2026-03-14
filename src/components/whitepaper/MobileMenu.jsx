@@ -1,3 +1,4 @@
+'use client'
 const TOC = [
   { id: 'cover',      n: '—',    label: 'Abstract' },
   { id: 'intro',      n: '01',   label: 'Introduction' },

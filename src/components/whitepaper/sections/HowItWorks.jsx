@@ -1,3 +1,4 @@
+'use client'
 const talentSteps = [
   { n:'01', title:'Create a Contributor Profile', body:'Select your skill domain. No resume required at Phase 2 and beyond.' },
   { n:'02', title:'Join or Get Matched to a Pod', body:'AI-assisted matching based on skills, availability, and prior PoP records.' },

@@ -1,3 +1,4 @@
+'use client'
 const items = [
   { val: '3',    lbl: 'Launch phases' },
   { val: 'Pod',  lbl: 'Team-first execution' },

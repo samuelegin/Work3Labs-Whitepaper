@@ -1,3 +1,4 @@
+'use client'
 export default function Abstract() {
   return (
     <section id="intro" className="px-[68px] py-24 relative max-md:px-6 max-md:py-14">

@@ -1,75 +1,76 @@
-/**
- * useAuth
- *
- * Manages admin authentication state.
- * Token is stored in sessionStorage (cleared on tab close) rather than
- * localStorage to reduce XSS exposure surface.
- *
- * For production consider httpOnly cookies instead — set those server-side
- * and remove all client-side token storage entirely.
- */
+'use client'
 
-import { useState, useCallback, useEffect } from 'react'
-import { adminLogin, adminLogout } from '../services/api'
+import { useState, useCallback, useEffect, createContext, useContext } from 'react'
+import { adminLogin, adminLogout } from '@/services/api'
 
-const TOKEN_KEY = 'w3l_admin_token'
+const TOKEN_KEY  = 'w3l_admin_token'
+const COOKIE_KEY = 'w3l_auth'
 
-/** Read token from sessionStorage without throwing. */
-function readToken() {
-  try { return sessionStorage.getItem(TOKEN_KEY) ?? null }
-  catch { return null }
+function readToken()  { try { return sessionStorage.getItem(TOKEN_KEY) ?? null } catch { return null } }
+function saveToken(t) { try { sessionStorage.setItem(TOKEN_KEY, t.trim()) } catch {} }
+function clearToken() { try { sessionStorage.removeItem(TOKEN_KEY) } catch {} }
+
+// Set a cookie readable by Next.js middleware (not httpOnly so JS can clear it)
+function setCookie(val) {
+  document.cookie = `${COOKIE_KEY}=${val}; path=/; SameSite=Lax; Max-Age=28800` // 8h
+}
+function clearCookie() {
+  document.cookie = `${COOKIE_KEY}=; path=/; Max-Age=0`
 }
 
-/** Persist token. Strips accidental whitespace. */
-function saveToken(token) {
-  try { sessionStorage.setItem(TOKEN_KEY, token.trim()) }
-  catch { /* sessionStorage unavailable — in-memory only */ }
-}
+const AuthContext = createContext(null)
 
-/** Clear token from storage. */
-function clearToken() {
-  try { sessionStorage.removeItem(TOKEN_KEY) }
-  catch { /* noop */ }
-}
+export function AuthProvider({ children }) {
+  const [token,   setToken]   = useState(null)
+  const [admin,   setAdmin]   = useState(null)
+  const [loading, setLoading] = useState(false)
+  const [error,   setError]   = useState(null)
 
-export function useAuth() {
-  const [token,      setToken]      = useState(() => readToken())
-  const [admin,      setAdmin]      = useState(null)
-  const [loading,    setLoading]    = useState(false)
-  const [error,      setError]      = useState(null)
+  // Hydrate from sessionStorage on mount (client only)
+  useEffect(() => {
+    const t = readToken()
+    if (t) { setToken(t); setCookie(t) }
+  }, [])
 
   const isAuthenticated = Boolean(token)
 
-  /** Attach token to outgoing API headers — call this from api.js interceptors. */
-  function getAuthHeader() {
-    return token ? { Authorization: `Bearer ${token}` } : {}
-  }
-
-  /** Login: POST /api/admin/login */
   const login = useCallback(async ({ email, password }) => {
-    setLoading(true)
-    setError(null)
+    setLoading(true); setError(null)
     const { data, error } = await adminLogin({ email, password })
-    if (error) {
-      setError(error)
-      setLoading(false)
-      return { error }
-    }
-    // API returns { token, admin }
+    if (error) { setError(error); setLoading(false); return { error } }
     saveToken(data.token)
+    setCookie(data.token)
     setToken(data.token)
     setAdmin(data.admin ?? null)
     setLoading(false)
     return { error: null }
   }, [])
 
-  /** Logout: invalidate server session + clear local state. */
   const logout = useCallback(async () => {
-    await adminLogout().catch(() => {})   // best-effort — clear local state regardless
+    await adminLogout().catch(() => {})
     clearToken()
+    clearCookie()
     setToken(null)
     setAdmin(null)
   }, [])
 
-  return { token, admin, isAuthenticated, loading, error, login, logout, getAuthHeader }
+  // Also expose a way to save token directly (used by setup/accept-invite)
+  const saveSession = useCallback((token, adminData) => {
+    saveToken(token)
+    setCookie(token)
+    setToken(token)
+    setAdmin(adminData ?? null)
+  }, [])
+
+  return (
+    <AuthContext.Provider value={{ token, admin, isAuthenticated, loading, error, login, logout, saveSession }}>
+      {children}
+    </AuthContext.Provider>
+  )
+}
+
+export function useAuth() {
+  const ctx = useContext(AuthContext)
+  if (!ctx) throw new Error('useAuth must be used inside <AuthProvider>')
+  return ctx
 }

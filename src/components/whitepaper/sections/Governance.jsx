@@ -1,3 +1,4 @@
+'use client'
 const govItems = [
   'Reputation-weighted contribution scoring',
   'Pod-level accountability and dispute resolution',

@@ -1,5 +1,7 @@
+'use client'
 import { useState, useEffect } from 'react'
-import { Link, useSearchParams } from 'react-router-dom'
+import Link from 'next/link'
+import { useSearchParams } from 'next/navigation'
 
 const COUNTRIES = [
   'Afghanistan','Albania','Algeria','Andorra','Angola','Antigua and Barbuda','Argentina',
@@ -33,7 +35,7 @@ const inputBase = `font-sans text-[14px] font-light text-ink bg-white border-[1.
 const inputErr  = `border-[#E53E3E] shadow-[0_0_0_3px_rgba(229,62,62,0.06)]`
 
 export default function Apply() {
-  const [params] = useSearchParams()
+  const params = useSearchParams()
   const [mode, setMode]         = useState(params.get('type') === 'project' ? 'project' : 'talent')
   const [consented, setConsented] = useState(false)
   const [loading, setLoading]   = useState(false)
@@ -91,10 +93,10 @@ export default function Apply() {
 
       {/* Nav */}
       <nav className="fixed top-0 inset-x-0 z-[200] h-[56px] flex items-center justify-between px-10 bg-[rgba(250,250,248,0.92)] backdrop-blur-xl border-b border-black/[0.07] max-sm:px-5">
-        <Link to="/">
+        <Link href="/">
           <img src="/logo.png" alt="Work3 Labs" className="h-6 block" />
         </Link>
-        <Link to="/" className="font-mono text-[10px] tracking-[0.1em] uppercase text-[#BBB] flex items-center gap-1.5 hover:text-ink transition-colors">
+        <Link href="/" className="font-mono text-[10px] tracking-[0.1em] uppercase text-[#BBB] flex items-center gap-1.5 hover:text-ink transition-colors">
           ← Back to Whitepaper
         </Link>
       </nav>
@@ -126,10 +128,10 @@ export default function Apply() {
                 # Ref: <span className="text-ink font-medium">{refId}</span>
               </p>
               <div className="flex gap-2.5 flex-wrap justify-center">
-                <Link to="/" className="px-[22px] py-3 bg-ink text-paper rounded-[9px] text-[14px] font-medium tracking-[-0.01em] hover:bg-[#222] transition-colors">
+                <Link href="/" className="px-[22px] py-3 bg-ink text-paper rounded-[9px] text-[14px] font-medium tracking-[-0.01em] hover:bg-[#222] transition-colors">
                   Read the Whitepaper
                 </Link>
-                <Link to="/" className="px-[22px] py-3 border-[1.5px] border-black/[0.1] text-[#666] rounded-[9px] text-[14px] font-normal tracking-[-0.01em] hover:border-black/25 transition-colors">
+                <Link href="/" className="px-[22px] py-3 border-[1.5px] border-black/[0.1] text-[#666] rounded-[9px] text-[14px] font-normal tracking-[-0.01em] hover:border-black/25 transition-colors">
                   Back to Site
                 </Link>
               </div>

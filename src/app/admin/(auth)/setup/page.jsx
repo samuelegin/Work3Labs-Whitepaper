@@ -1,3 +1,4 @@
+'use client'
 /**
  * Work3 Labs — Admin Setup
  *
@@ -18,9 +19,10 @@
  */
 
 import { useState, useRef, useEffect } from 'react'
-import { useNavigate, Link } from 'react-router-dom'
-import { adminSetup } from '../services/api'
-import { useAuth } from '../hooks/useAuth'
+import Link from 'next/link'
+import { useRouter } from 'next/navigation'
+import { adminSetup } from '@/services/api'
+import { useAuth } from '@/hooks/useAuth'
 
 const INPUT_BASE = [
   'w-full font-sans text-[14px] font-light bg-white text-ink',
@@ -106,7 +108,7 @@ function StrengthBar({ password }) {
 }
 
 export default function AdminSetup() {
-  const navigate = useNavigate()
+  const router = useRouter()
   const { login } = useAuth()
 
   const [fields, setFields] = useState({ name: '', email: '', password: '', confirm: '', setupKey: '' })
@@ -183,11 +185,11 @@ export default function AdminSetup() {
     // Reuse login flow: save token, set admin state
     if (data?.token) {
       // Manually save token since we have it directly
-      try { sessionStorage.setItem('w3l_admin_token', data.token) } catch {}
-      navigate('/admin/dashboard', { replace: true })
+      
+      router.push('/admin/dashboard')
     } else {
       // Fallback: redirect to login
-      navigate('/admin/login', { replace: true })
+      router.push('/admin/login')
     }
   }
 
@@ -210,7 +212,7 @@ export default function AdminSetup() {
               An admin account already exists. This setup page is no longer accessible.
             </p>
             <Link
-              to="/admin/login"
+              href="/admin/login"
               className="font-mono text-[10px] tracking-[0.1em] uppercase text-ink border border-black/[0.12] rounded-full px-5 py-2.5 hover:bg-black/[0.04] transition-colors"
             >
               Go to login
@@ -229,7 +231,7 @@ export default function AdminSetup() {
     >
       <div className="absolute top-5 left-5 sm:top-7 sm:left-7 z-10">
         <Link
-          to="/"
+          href="/"
           className="flex items-center gap-2 font-mono text-[10px] tracking-[0.1em] uppercase text-[#BBB] hover:text-ink transition-colors"
         >
           <i className="bi bi-arrow-left text-[11px]" />

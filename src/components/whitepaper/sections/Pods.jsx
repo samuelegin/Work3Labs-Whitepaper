@@ -1,3 +1,4 @@
+'use client'
 const pods = [
   {
     tag: 'Growth / Community',

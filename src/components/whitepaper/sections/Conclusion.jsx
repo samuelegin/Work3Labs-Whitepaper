@@ -1,4 +1,5 @@
-import { Link } from 'react-router-dom'
+'use client'
+import Link from 'next/link'
 
 export default function Conclusion() {
   return (
@@ -21,10 +22,10 @@ export default function Conclusion() {
           Work3 Labs provides the execution infrastructure Web3 has lacked. Join Phase 1 and build your on-chain reputation from day one.
         </p>
         <div className="reveal delay-1 flex gap-3 justify-center flex-wrap relative">
-          <Link to="/apply?type=talent" className="text-[13.5px] font-medium text-paper bg-ink px-[26px] py-3 rounded-full transition-colors hover:bg-[#1f1f1f]">
+          <Link href="/apply?type=talent" className="text-[13.5px] font-medium text-paper bg-ink px-[26px] py-3 rounded-full transition-colors hover:bg-[#1f1f1f]">
             Apply as Talent
           </Link>
-          <Link to="/apply?type=project" className="text-[13.5px] font-normal text-ink border border-black/[0.16] px-[26px] py-3 rounded-full transition-colors hover:border-ink">
+          <Link href="/apply?type=project" className="text-[13.5px] font-normal text-ink border border-black/[0.16] px-[26px] py-3 rounded-full transition-colors hover:border-ink">
             Submit a Project
           </Link>
         </div>

@@ -1,3 +1,4 @@
+'use client'
 const phases = [
   {
     n:'Phase 01', time:'0 – 6 Months', active:true,

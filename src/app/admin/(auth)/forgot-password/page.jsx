@@ -1,3 +1,4 @@
+'use client'
 /**
  * Work3 Labs — Admin Forgot Password
  *
@@ -14,8 +15,8 @@
  */
 
 import { useState, useRef, useEffect } from 'react'
-import { Link } from 'react-router-dom'
-import { adminForgotPassword } from '../services/api'
+import Link from 'next/link'
+import { adminForgotPassword } from '@/services/api'
 
 const INPUT_BASE = [
   'w-full font-sans text-[14px] font-light bg-white text-ink',
@@ -78,7 +79,7 @@ export default function AdminForgotPassword() {
       {/* Back link */}
       <div className="absolute top-5 left-5 sm:top-7 sm:left-7 z-10">
         <Link
-          to="/admin/login"
+          href="/admin/login"
           className="flex items-center gap-2 font-mono text-[10px] tracking-[0.1em] uppercase text-[#BBB] hover:text-ink transition-colors"
         >
           <i className="bi bi-arrow-left text-[11px]" />
@@ -114,7 +115,7 @@ export default function AdminForgotPassword() {
                   Didn't receive it? Check your spam folder.
                 </p>
                 <Link
-                  to="/admin/login"
+                  href="/admin/login"
                   className="font-mono text-[10px] tracking-[0.1em] uppercase text-ink border border-black/[0.12] rounded-full px-5 py-2.5 hover:bg-black/[0.04] transition-colors"
                 >
                   Back to login
@@ -183,7 +184,7 @@ export default function AdminForgotPassword() {
                   </button>
 
                   <Link
-                    to="/admin/login"
+                    href="/admin/login"
                     className="w-full py-3 rounded-[10px] border border-black/[0.09] text-[#888] font-sans text-[13.5px] font-light hover:border-black/20 hover:text-ink transition-all flex items-center justify-center"
                   >
                     Back to login

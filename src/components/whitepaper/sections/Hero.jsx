@@ -1,4 +1,5 @@
-import { Link } from 'react-router-dom'
+'use client'
+import Link from 'next/link'
 
 export default function Hero() {
   return (
@@ -31,7 +32,7 @@ export default function Hero() {
           <a href="#intro" className="text-[13.5px] font-medium text-paper bg-ink px-[26px] py-3 rounded-full transition-colors hover:bg-[#1f1f1f] max-md:text-center max-md:w-full">
             Read Whitepaper
           </a>
-          <Link to="/apply" className="text-[13.5px] font-normal text-ink border border-black/[0.16] px-[26px] py-3 rounded-full transition-colors hover:border-ink max-md:text-center max-md:w-full">
+          <Link href="/apply" className="text-[13.5px] font-normal text-ink border border-black/[0.16] px-[26px] py-3 rounded-full transition-colors hover:border-ink max-md:text-center max-md:w-full">
             Apply for Early Access
           </Link>
         </div>

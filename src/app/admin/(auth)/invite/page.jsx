@@ -1,3 +1,4 @@
+'use client'
 /**
  * Work3 Labs — Admin Accept Invite
  *
@@ -14,8 +15,9 @@
  */
 
 import { useState, useEffect, useRef } from 'react'
-import { Link, useSearchParams } from 'react-router-dom'
-import { validateInviteToken, acceptAdminInvite } from '../services/api'
+import Link from 'next/link'
+import { useSearchParams } from 'next/navigation'
+import { validateInviteToken, acceptAdminInvite } from '@/services/api'
 
 const INPUT_BASE = [
   'w-full font-sans text-[14px] font-light bg-white text-ink',
@@ -84,7 +86,7 @@ function Shell({ children }) {
 }
 
 export default function AdminAcceptInvite() {
-  const [params] = useSearchParams()
+  const params = useSearchParams()
   const token = params.get('token') ?? ''
 
   const [stage,       setStage]       = useState('validating') // validating | form | done | invalid
@@ -149,7 +151,7 @@ export default function AdminAcceptInvite() {
 
     // Auto-save token so they can go straight to dashboard
     if (data?.token) {
-      try { sessionStorage.setItem('w3l_admin_token', data.token) } catch {}
+      
     }
     setStage('done')
   }
@@ -180,7 +182,7 @@ export default function AdminAcceptInvite() {
           <p className="text-[13.5px] font-light text-[#888] leading-relaxed mb-7 max-w-[270px]">
             This invite link has expired, already been used, or is invalid. Ask the owner to send a new invite.
           </p>
-          <Link to="/admin/login"
+          <Link href="/admin/login"
             className="font-mono text-[10px] tracking-[0.1em] uppercase text-ink border border-black/[0.12] rounded-full px-5 py-2.5 hover:bg-black/[0.04] transition-colors">
             Back to login
           </Link>
@@ -204,7 +206,7 @@ export default function AdminAcceptInvite() {
           <p className="text-[13.5px] font-light text-[#888] leading-relaxed mb-7 max-w-[260px]">
             Your admin account is ready. Sign in to access the dashboard.
           </p>
-          <Link to="/admin/dashboard"
+          <Link href="/admin/dashboard"
             className="flex items-center gap-2 bg-ink text-paper font-sans text-[13.5px] font-medium px-6 py-3 rounded-[10px] hover:bg-[#1A1A1A] transition-colors">
             <i className="bi bi-box-arrow-in-right text-[14px]" />
             Go to dashboard

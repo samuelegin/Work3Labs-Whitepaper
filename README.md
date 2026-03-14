@@ -1,76 +1,43 @@
-# Work3 Labs — React + Vite + Tailwind
+# Work3 Labs — Next.js 14
 
-Production frontend for the Work3 Labs whitepaper and early access form.
-
-## Stack
-
-- **Vite 5** — build tooling
-- **React 18** — UI
-- **React Router v6** — client-side routing (`/` whitepaper, `/apply` form)
-- **Tailwind CSS 3** — utility-first styling
-- **IBM Plex Mono / Fraunces / Outfit** — Google Fonts
-- **Bootstrap Icons 1.11.3** — icon set (CDN)
+Migrated from Vite + React to Next.js 14 App Router.
 
 ---
 
-## Getting started
+## Preview locally
 
+### 1. Install dependencies
 ```bash
-# 1. Install dependencies
 npm install
-
-# 2. Drop your assets into /public
-#    - logo.png
-#    - favicon.png
-
-# 3. Start dev server
-npm run dev
-# → http://localhost:5173
 ```
+
+### 2. Set up environment
+```bash
+cp .env.local.example .env.local
+```
+Open `.env.local` and set `NEXT_PUBLIC_API_URL` to your backend URL.
+For local dev without a backend yet, leave it as `http://localhost:4000/api` — pages will load fine, API calls will just fail gracefully.
+
+### 3. Run the dev server
+```bash
+npm run dev
+```
+Open [http://localhost:3000](http://localhost:3000)
 
 ---
 
 ## Routes
 
-| Route     | Page            |
-|-----------|-----------------|
-| `/`       | Whitepaper      |
-| `/apply`  | Early Access Form |
-| `/apply?type=project` | Form pre-set to Project |
-
-Links between pages use React Router `<Link>` — no full-page reloads.
-
-The whitepaper's **"Apply as Talent"** and **"Submit a Project"** CTA buttons pass `?type=talent` or `?type=project` query params to pre-select the correct card on the form.
-
----
-
-## Build & deploy
-
-```bash
-# Production build → /dist
-npm run build
-
-# Preview production build locally
-npm run preview
-```
-
-### Vercel (recommended)
-
-```bash
-npm i -g vercel
-vercel --prod
-```
-
-Vercel auto-detects Vite. No config needed.
-
-### Netlify
-
-Drag the `/dist` folder into Netlify's UI after `npm run build`, or connect via GitHub.
-
-**Important:** Add a `_redirects` file to `/public` for client-side routing:
-```
-/*  /index.html  200
-```
+| URL | Page |
+|-----|------|
+| `/` | Whitepaper |
+| `/apply` | Early access form |
+| `/admin/login` | Admin sign in |
+| `/admin/setup` | First-time admin registration (locks after use) |
+| `/admin/forgot-password` | Request password reset |
+| `/admin/reset-password?token=` | Set new password from email link |
+| `/admin/invite?token=` | Accept team invite |
+| `/admin/dashboard` | Admin dashboard (protected) |
 
 ---
 
@@ -78,78 +45,80 @@ Drag the `/dist` folder into Netlify's UI after `npm run build`, or connect via 
 
 ```
 src/
-  pages/
-    Whitepaper.jsx          ← Assembles all sections
-    Apply.jsx               ← Early access form
+  app/
+    layout.jsx                        ← root layout (fonts, global CSS, Providers)
+    page.jsx                          ← whitepaper (/)
+    globals.css
+    apply/
+      page.jsx                        ← early access form (/apply)
+    admin/
+      (auth)/                         ← public auth pages
+        login/page.jsx
+        setup/page.jsx
+        forgot-password/page.jsx
+        reset-password/page.jsx
+        invite/page.jsx
+      (dashboard)/                    ← protected pages
+        dashboard/page.jsx            ← main admin dashboard
   components/
+    Providers.jsx                     ← wraps AuthProvider
     whitepaper/
+      WhitepaperClient.jsx            ← client wrapper for whitepaper page
       WhitepaperNav.jsx
       Sidebar.jsx
       MobileMenu.jsx
-      sections/
-        Hero.jsx
-        Metrics.jsx
-        Abstract.jsx
-        Problem.jsx
-        PoP.jsx
-        Pods.jsx
-        HowItWorks.jsx
-        Features.jsx
-        Architecture.jsx
-        BusinessModel.jsx
-        Roadmap.jsx
-        Onboarding.jsx
-        Governance.jsx
-        Risks.jsx
-        ERP.jsx
-        Conclusion.jsx
+      sections/                       ← all 16 whitepaper sections
   hooks/
-    useReveal.js            ← IntersectionObserver for scroll animations
-    useActiveToc.js         ← Scroll spy for TOC highlighting
-  App.jsx                   ← Router
-  main.jsx                  ← Entry point
-  index.css                 ← Global styles + Tailwind layers
-public/
-  logo.png                  ← Add your logo here
-  favicon.png               ← Add your favicon here
-  _redirects                ← Add for Netlify SPA routing
+    useAuth.js                        ← auth context + cookie for middleware
+    useApplicants.js
+    useActiveToc.js
+    useReveal.js
+    usePods.js
+  services/
+    api.js                            ← all API calls (NEXT_PUBLIC_API_URL)
+  middleware.js                       ← protects /admin/dashboard, redirects login
 ```
 
 ---
 
-## Connecting the form to a backend
+## Key changes from Vite version
 
-`src/pages/Apply.jsx` — look for the `submit()` function. Replace the `setTimeout` mock with your real API call:
-
-```js
-async function submit() {
-  if (!validate()) return
-  setLoading(true)
-  try {
-    await fetch('/api/apply', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ ...fields, type: mode }),
-    })
-    setRefId('W3L-' + Date.now().toString(36).toUpperCase().slice(-6))
-    setSuccess(true)
-    setProgress(100)
-  } catch (err) {
-    // handle error
-  } finally {
-    setLoading(false)
-  }
-}
-```
+| Before (Vite) | After (Next.js) |
+|---------------|-----------------|
+| `react-router-dom` | Next.js App Router file-based routing |
+| `import { Link }` from react-router-dom | `import Link from 'next/link'` |
+| `useNavigate()` | `useRouter()` from `next/navigation` |
+| `useSearchParams()` from react-router-dom | `useSearchParams()` from `next/navigation` |
+| `VITE_API_URL` | `NEXT_PUBLIC_API_URL` |
+| `import.meta.env.*` | `process.env.NEXT_PUBLIC_*` |
+| `sessionStorage` only for auth | `sessionStorage` + cookie (cookie lets middleware protect routes) |
+| Manual `RequireAuth` wrapper | `src/middleware.js` handles route protection |
+| Pod Creation tab (admin creates pods) | Pods Review tab (pods created by users, admin reviews + passes/fails) |
 
 ---
 
-## Design tokens
+## Admin dashboard tabs
 
-| Token     | Value     |
-|-----------|-----------|
-| Green     | `#2DFC44` |
-| Green Dark| `#1DC433` |
-| Ink       | `#0D0D0D` |
-| Paper     | `#FAFAF8` |
-| Alt BG    | `#F2F0EB` |
+| Tab | Who sees it | What it does |
+|-----|-------------|--------------|
+| Talent Applications | All admins | Review, approve, reject talent applicants |
+| Project Applications | All admins | Review, approve, reject project applicants |
+| Pods Review | All admins | View all pods, pass/fail deliverables, release escrow |
+| Team | Owner only | Invite admins, view team, remove admins |
+
+---
+
+## Deploy to Vercel
+
+1. Push this repo to GitHub
+2. Import into Vercel — it auto-detects Next.js
+3. Add environment variable: `NEXT_PUBLIC_API_URL` → your backend URL
+4. Deploy
+
+No `_redirects` file needed — Next.js handles routing natively.
+
+---
+
+## TODO — still to wire up
+
+See `TODO.md` for the remaining items.

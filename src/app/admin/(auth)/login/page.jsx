@@ -1,6 +1,8 @@
-import { useState, useRef, useEffect } from 'react'
-import { useNavigate, useLocation, Link } from 'react-router-dom'
-import { useAuth } from '../hooks/useAuth'
+'use client'
+import { useState, useRef, useEffect, Suspense } from 'react'
+import Link from 'next/link'
+import { useRouter, useSearchParams } from 'next/navigation'
+import { useAuth } from '@/hooks/useAuth'
 
 // ── Shared input token ────────────────────────────────────────────────────────
 
@@ -62,14 +64,14 @@ function Field({ id, label, type, value, onChange, onKeyDown, error, placeholder
 
 // ── AdminLogin ────────────────────────────────────────────────────────────────
 
-export default function AdminLogin() {
+function AdminLogin() {
   const { login, loading } = useAuth()
-  const navigate  = useNavigate()
-  const location  = useLocation()
+  const router = useRouter()
+  const searchParams = useSearchParams()
+  const from = searchParams.get('from') ?? '/admin/dashboard'
+  
   const emailRef  = useRef(null)
 
-  // Where to go after login — default to /admin/dashboard
-  const from = location.state?.from?.pathname ?? '/admin/dashboard'
 
   const [email,      setEmail]      = useState('')
   const [password,   setPassword]   = useState('')
@@ -133,7 +135,7 @@ export default function AdminLogin() {
       return
     }
 
-    navigate(from, { replace: true })
+    router.push('/admin/dashboard')
   }
 
   // ── Render ──────────────────────────────────────────────────────────────────
@@ -146,7 +148,7 @@ export default function AdminLogin() {
       {/* Back to site — top-left */}
       <div className="absolute top-5 left-5 sm:top-7 sm:left-7 z-10">
         <Link
-          to="/"
+          href="/"
           className="flex items-center gap-2 font-mono text-[10px] tracking-[0.1em] uppercase text-[#BBB] hover:text-ink transition-colors"
         >
           <i className="bi bi-arrow-left text-[11px]" />
@@ -232,7 +234,7 @@ export default function AdminLogin() {
               {/* Forgot password */}
               <div className="flex justify-end">
                 <Link
-                  to="/admin/forgot-password"
+                  href="/admin/forgot-password"
                   className="font-mono text-[10px] tracking-[0.08em] uppercase text-[#BBB] hover:text-ink transition-colors"
                 >
                   Forgot password?
@@ -281,5 +283,13 @@ export default function AdminLogin() {
         </div>
       </div>
     </div>
+  )
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen bg-paper" />}>
+      <AdminLogin />
+    </Suspense>
   )
 }

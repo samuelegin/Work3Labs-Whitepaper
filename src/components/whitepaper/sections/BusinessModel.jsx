@@ -1,3 +1,4 @@
+'use client'
 const revenue = [
   { n:'01', title:'Project Execution Fees', body:'A fee applied to each project engagement facilitated through Work3 Labs. Scales directly with execution volume across pods and projects on the platform.' },
   { n:'02', title:'Subscription Access', body:'Advanced analytics, performance reporting, and priority matching tools offered to contributors, pods, and projects under tiered subscription plans from Phase 2 onward.' },

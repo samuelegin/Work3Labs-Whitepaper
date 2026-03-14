@@ -1,5 +1,6 @@
+'use client'
 import { useState } from 'react'
-import { Link } from 'react-router-dom'
+import Link from 'next/link'
 
 export default function WhitepaperNav({ onToggleMob }) {
   return (
@@ -31,7 +32,7 @@ export default function WhitepaperNav({ onToggleMob }) {
         <a href="#" className="text-[13px] font-normal text-[#666] border border-black/[0.13] px-4 py-1.5 rounded-full transition-all hover:border-ink hover:text-ink">
           Download PDF
         </a>
-        <Link to="/apply" className="text-[13px] font-medium text-ink bg-green px-4 py-1.5 rounded-full transition-colors hover:bg-green-dark">
+        <Link href="/apply" className="text-[13px] font-medium text-ink bg-green px-4 py-1.5 rounded-full transition-colors hover:bg-green-dark">
           Join Waitlist
         </Link>
       </div>

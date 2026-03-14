@@ -1,3 +1,4 @@
+'use client'
 const layers = [
   {
     n: 'Layer 01', title: 'Data Layer',

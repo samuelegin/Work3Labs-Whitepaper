@@ -1,3 +1,4 @@
+'use client'
 const credPills = [
   '5 DeFi protocol launches',
   '3 growth campaigns delivered',
@@ -96,14 +97,14 @@ export default function ERP() {
         </p>
         <div className="flex flex-wrap items-center gap-2">
           {['Better Contributors', 'Better Pods', 'Better Outcomes', 'Stronger Reputation Signals'].map((node, i, arr) => (
-            <>
-              <span key={node} className={`text-[13px] font-light tracking-[-0.01em] px-4 py-2 rounded-full border ${i === arr.length - 1 ? 'bg-green/5 border-green/20 text-green-dark' : 'bg-white border-black/[0.1] text-[#555]'}`}>
+            <span key={node} className="inline-flex items-center gap-2">
+              <span className={`text-[13px] font-light tracking-[-0.01em] px-4 py-2 rounded-full border ${i === arr.length - 1 ? 'bg-green/5 border-green/20 text-green-dark' : 'bg-white border-black/[0.1] text-[#555]'}`}>
                 {node}
               </span>
               {i < arr.length - 1 && (
-                <span key={`arr-${i}`} className="text-[#D0D0D0] text-sm">→</span>
+                <span className="text-[#D0D0D0] text-sm">→</span>
               )}
-            </>
+            </span>
           ))}
         </div>
       </div>

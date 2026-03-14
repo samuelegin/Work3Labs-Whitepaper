@@ -1,20 +1,15 @@
-/**
- * Work3 Labs — Admin Dashboard v2
- *
- * Changes vs v1:
- *  1. Invite token removed from approve modal — backend generates it
- *  2. Pagination: GET /admin/applicants?page=&limit=50
- *  3. Column sorting: Applied / Country / Status
- *  4. Bulk select + Approve Selected / Reject Selected
- *  5. Pod Creation tab — form a team from approved talents + a project
- */
+'use client'
 
 import { useState, useMemo, useEffect } from 'react'
-import { Link } from 'react-router-dom'
-import { useApplicants } from '../hooks/useApplicants'
-import { usePods }        from '../hooks/usePods'
-import { useAuth }        from '../hooks/useAuth'
-import { fetchApplicants, fetchAdmins, inviteAdmin, removeAdmin, cancelInvite, resendInvite } from '../services/api'
+import Link from 'next/link'
+import { useRouter } from 'next/navigation'
+import { useApplicants } from '@/hooks/useApplicants'
+import { useAuth }        from '@/hooks/useAuth'
+import {
+  fetchApplicants,
+  fetchAdmins, inviteAdmin, removeAdmin, cancelInvite, resendInvite,
+  fetchPods, passProject, failProject, releaseEscrow,
+} from '@/services/api'
 
 // ── Design tokens ─────────────────────────────────────────────────────────────
 
@@ -394,255 +389,6 @@ function ResetModal({ onConfirm, onClose }) {
   )
 }
 
-// ── Pod Creation panel ────────────────────────────────────────────────────────
-
-const POD_ROLES = [
-  'Community Lead', 'Content Strategist', 'Growth Analyst', 'Social Manager',
-  'Lead Engineer', 'Smart Contract Dev', 'DevOps', 'QA Engineer',
-  'Art Director', 'UI Designer', 'Motion Designer',
-  'Strategist', 'BD Lead', 'Research Analyst', 'Copywriter',
-  'Project Manager', 'DAO Coordinator', 'Treasury Analyst',
-]
-
-function PodCreationPanel({ pods, loadingPods, onCreate, showToast }) {
-  const [name,       setName]       = useState('')
-  const [projectId,  setProjectId]  = useState('')
-  const [members,    setMembers]    = useState([{ talentId: '', role: '' }])
-  const [talents,    setTalents]    = useState([])   // approved talents for picker
-  const [projects,   setProjects]   = useState([])   // approved projects for picker
-  const [loadingP,   setLoadingP]   = useState(true)
-  const [submitting, setSubmitting] = useState(false)
-  const [created,    setCreated]    = useState(null)
-
-  // Load approved talents + projects for the pickers
-  useState(() => {
-    let active = true
-    async function load() {
-      setLoadingP(true)
-      const [tRes, pRes] = await Promise.all([
-        fetchApplicants({ type: 'talent',  status: 'approved', limit: 200 }),
-        fetchApplicants({ type: 'project', status: 'approved', limit: 200 }),
-      ])
-      if (!active) return
-      if (!tRes.error) {
-        const d = tRes.data
-        setTalents(Array.isArray(d) ? d : (d?.data ?? []))
-      }
-      if (!pRes.error) {
-        const d = pRes.data
-        setProjects(Array.isArray(d) ? d : (d?.data ?? []))
-      }
-      setLoadingP(false)
-    }
-    load()
-    return () => { active = false }
-  }, [])
-
-  function addMember()       { setMembers(m => [...m, { talentId: '', role: '' }]) }
-  function removeMember(i)   { setMembers(m => m.filter((_, j) => j !== i)) }
-  function updateMember(i, k, v) {
-    setMembers(m => m.map((x, j) => j === i ? { ...x, [k]: v } : x))
-  }
-
-  function reset() {
-    setName(''); setProjectId(''); setMembers([{ talentId: '', role: '' }]); setCreated(null)
-  }
-
-  async function handleCreate() {
-    if (!name.trim() || !projectId) return
-    const validMembers = members.filter(m => m.talentId && m.role)
-    if (validMembers.length === 0) return
-    setSubmitting(true)
-    const { error, pod } = await onCreate({ name: name.trim(), projectId, members: validMembers })
-    setSubmitting(false)
-    if (error) {
-      showToast(`Pod creation failed: ${error}`, 'error')
-    } else {
-      setCreated(pod)
-    }
-  }
-
-  const selectedTalentIds = members.map(m => m.talentId).filter(Boolean)
-
-  if (created) {
-    return (
-      <div className="max-w-[520px] mx-auto py-12 text-center flex flex-col items-center">
-        <div className="w-14 h-14 rounded-full bg-[#2DFC44] flex items-center justify-center mb-5 pop-anim">
-          <i className="bi bi-people-fill text-[22px] text-ink" />
-        </div>
-        <span className="font-mono text-[10px] tracking-[0.14em] uppercase text-[#AAA] mb-2">Pod Created</span>
-        <h2 className="font-serif text-[28px] font-light tracking-[-0.04em] text-ink mb-2">{created?.name ?? name}</h2>
-        <p className="text-[13.5px] font-light text-[#999] mb-8">
-          {members.filter(m => m.talentId && m.role).length} members assigned. The pod is now active and visible in the platform.
-        </p>
-        <button onClick={reset}
-          className="font-mono text-[10px] tracking-[0.1em] uppercase text-ink border border-black/[0.12] rounded-full px-5 py-2.5 bg-transparent cursor-pointer hover:bg-black/[0.04] transition-colors">
-          Create Another Pod
-        </button>
-      </div>
-    )
-  }
-
-  return (
-    <div>
-      <div className="grid grid-cols-1 lg:grid-cols-[1fr_320px] gap-6 lg:gap-10">
-        {/* Form */}
-        <div className="space-y-6">
-          {/* Pod name */}
-          <div>
-            <label className="font-mono text-[10px] tracking-[0.12em] uppercase text-[#999] block mb-2">
-              Pod Name <span className="text-red-400">*</span>
-            </label>
-            <input className={INPUT} value={name} onChange={e => setName(e.target.value)} placeholder="e.g. Growth Alpha Pod" />
-          </div>
-
-          {/* Project */}
-          <div>
-            <label className="font-mono text-[10px] tracking-[0.12em] uppercase text-[#999] block mb-2">
-              Assign to Project <span className="text-red-400">*</span>
-            </label>
-            {loadingP ? (
-              <div className="h-[46px] bg-black/[0.03] rounded-[10px] flex items-center px-4">
-                <Spinner size={16} light={false} />
-              </div>
-            ) : projects.length === 0 ? (
-              <div className="text-[13px] font-light text-[#AAA] px-4 py-3 bg-black/[0.02] border border-black/[0.07] rounded-[10px]">
-                No approved projects yet — approve a project first.
-              </div>
-            ) : (
-              <div className="relative">
-                <select
-                  className={`${INPUT} appearance-none pr-9 cursor-pointer`}
-                  value={projectId}
-                  onChange={e => setProjectId(e.target.value)}
-                >
-                  <option value="" disabled>Select project…</option>
-                  {projects.map(p => (
-                    <option key={p.id} value={p.id}>{p.fn} {p.ln} — @{p.username}</option>
-                  ))}
-                </select>
-                <svg className="absolute right-3.5 top-1/2 -translate-y-1/2 pointer-events-none" width="11" height="7" viewBox="0 0 11 7">
-                  <path d="M1 1l4.5 4.5L10 1" stroke="#AAAAAA" strokeWidth="1.5" fill="none" strokeLinecap="round" strokeLinejoin="round"/>
-                </svg>
-              </div>
-            )}
-          </div>
-
-          {/* Members */}
-          <div>
-            <div className="flex items-center justify-between mb-2">
-              <label className="font-mono text-[10px] tracking-[0.12em] uppercase text-[#999]">
-                Team Members <span className="text-red-400">*</span>
-              </label>
-              <button onClick={addMember}
-                className="font-mono text-[10px] tracking-[0.08em] uppercase text-[#1DC433] flex items-center gap-1 bg-transparent border-none cursor-pointer hover:opacity-70 transition-opacity">
-                <i className="bi bi-plus-circle" /> Add member
-              </button>
-            </div>
-
-            {loadingP ? (
-              <div className="h-[46px] bg-black/[0.03] rounded-[10px] flex items-center px-4">
-                <Spinner size={16} light={false} />
-              </div>
-            ) : talents.length === 0 ? (
-              <div className="text-[13px] font-light text-[#AAA] px-4 py-3 bg-black/[0.02] border border-black/[0.07] rounded-[10px]">
-                No approved talents yet — approve talents first.
-              </div>
-            ) : (
-              <div className="space-y-2">
-                {members.map((m, i) => (
-                  <div key={i} className="grid grid-cols-[1fr_1fr_auto] sm:grid-cols-[2fr_2fr_auto] gap-2 items-center">
-                    {/* Talent picker */}
-                    <div className="relative">
-                      <select
-                        className={`${INPUT} appearance-none pr-8 cursor-pointer text-[12px]`}
-                        value={m.talentId}
-                        onChange={e => updateMember(i, 'talentId', e.target.value)}
-                      >
-                        <option value="" disabled>Select talent…</option>
-                        {talents.map(t => (
-                          <option
-                            key={t.id}
-                            value={t.id}
-                            disabled={selectedTalentIds.includes(t.id) && t.id !== m.talentId}
-                          >
-                            {t.fn} {t.ln}
-                          </option>
-                        ))}
-                      </select>
-                      <svg className="absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none" width="9" height="6" viewBox="0 0 11 7">
-                        <path d="M1 1l4.5 4.5L10 1" stroke="#AAAAAA" strokeWidth="1.5" fill="none" strokeLinecap="round" strokeLinejoin="round"/>
-                      </svg>
-                    </div>
-
-                    {/* Role picker */}
-                    <div className="relative">
-                      <select
-                        className={`${INPUT} appearance-none pr-8 cursor-pointer text-[12px]`}
-                        value={m.role}
-                        onChange={e => updateMember(i, 'role', e.target.value)}
-                      >
-                        <option value="" disabled>Assign role…</option>
-                        {POD_ROLES.map(r => <option key={r}>{r}</option>)}
-                      </select>
-                      <svg className="absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none" width="9" height="6" viewBox="0 0 11 7">
-                        <path d="M1 1l4.5 4.5L10 1" stroke="#AAAAAA" strokeWidth="1.5" fill="none" strokeLinecap="round" strokeLinejoin="round"/>
-                      </svg>
-                    </div>
-
-                    {/* Remove */}
-                    <button
-                      onClick={() => removeMember(i)}
-                      disabled={members.length === 1}
-                      className="w-9 h-9 flex items-center justify-center rounded-full border border-black/[0.09] text-[#CCC] hover:border-red-300 hover:text-red-400 transition-all bg-transparent cursor-pointer disabled:opacity-20 disabled:cursor-not-allowed flex-shrink-0"
-                    >
-                      <i className="bi bi-trash3 text-[12px]" />
-                    </button>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-
-          <button
-            onClick={handleCreate}
-            disabled={!name.trim() || !projectId || members.filter(m => m.talentId && m.role).length === 0 || submitting}
-            className="w-full sm:w-auto flex items-center justify-center gap-2 bg-ink text-paper px-8 py-3.5 rounded-[10px] font-medium text-[14px] tracking-[-0.01em] hover:bg-[#222] transition-colors border-none cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
-          >
-            {submitting ? <Spinner /> : <i className="bi bi-people-fill" />}
-            Create Pod
-          </button>
-        </div>
-
-        {/* Sidebar: existing pods */}
-        <div>
-          <p className="font-mono text-[10px] tracking-[0.12em] uppercase text-[#AAA] mb-3">Existing Pods</p>
-          {loadingPods ? (
-            <div className="flex justify-center py-8"><Spinner size={20} light={false} /></div>
-          ) : pods.length === 0 ? (
-            <div className="text-center py-8">
-              <i className="bi bi-people text-[28px] text-[#DDD] block mb-2" />
-              <p className="text-[12.5px] font-light text-[#CCC]">No pods yet</p>
-            </div>
-          ) : (
-            <div className="space-y-2">
-              {pods.map(pod => (
-                <div key={pod.id} className="bg-white border border-black/[0.07] rounded-[12px] px-4 py-3.5">
-                  <p className="font-medium text-[13px] text-ink tracking-[-0.01em] mb-0.5">{pod.name}</p>
-                  <p className="text-[11.5px] font-light text-[#AAA]">
-                    {pod.memberCount ?? pod.members?.length ?? 0} members
-                    {pod.project ? ` · ${pod.project}` : ''}
-                  </p>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-      </div>
-    </div>
-  )
-}
-
 // ── Applicant row (desktop) ───────────────────────────────────────────────────
 
 function ApplicantRow({ applicant, selected, onSelect, onApprove, onReject }) {
@@ -969,6 +715,287 @@ function ApplicantPanel({ type, onBroadcast, showToast }) {
   )
 }
 
+// ── Pods Review Panel (read-only — pods created by users, admin reviews) ──────
+
+const POD_STATUS = {
+  forming:   { bg: 'bg-blue-50',   text: 'text-blue-700',  dot: 'bg-blue-400',  label: 'Forming'   },
+  active:    { bg: 'bg-amber-50',  text: 'text-amber-700', dot: 'bg-amber-400', label: 'Active'    },
+  review:    { bg: 'bg-purple-50', text: 'text-purple-700',dot: 'bg-purple-400',label: 'In Review' },
+  passed:    { bg: 'bg-[#F0FDF4]', text: 'text-green-700', dot: 'bg-green-500', label: 'Passed'    },
+  failed:    { bg: 'bg-red-50',    text: 'text-red-600',   dot: 'bg-red-400',   label: 'Failed'    },
+  released:  { bg: 'bg-[#F0FDF4]', text: 'text-green-800', dot: 'bg-green-600', label: 'Released'  },
+}
+
+function PodStatusBadge({ status }) {
+  const s = POD_STATUS[status] ?? POD_STATUS.forming
+  return (
+    <span className={`inline-flex items-center gap-1.5 text-[11px] font-mono tracking-wide px-2.5 py-1 rounded-full whitespace-nowrap ${s.bg} ${s.text}`}>
+      <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${s.dot}`} />
+      {s.label}
+    </span>
+  )
+}
+
+function PodsPanel({ showToast }) {
+  const [pods,       setPods]       = useState([])
+  const [loading,    setLoading]    = useState(true)
+  const [error,      setError]      = useState(null)
+  const [expanded,   setExpanded]   = useState(null)   // pod id expanded
+  const [failReason, setFailReason] = useState('')
+  const [failing,    setFailing]    = useState(null)   // pod being failed
+  const [acting,     setActing]     = useState(null)   // pod id with action in progress
+
+  async function load() {
+    setLoading(true); setError(null)
+    const { data, error } = await fetchPods()
+    setLoading(false)
+    if (error) { setError(error); return }
+    setPods(data?.data ?? data ?? [])
+  }
+
+  useEffect(() => { load() }, [])
+
+  async function handlePass(pod) {
+    setActing(pod.id)
+    const { error } = await passProject(pod.id)
+    setActing(null)
+    if (error) { showToast(`Failed: ${error}`, 'error'); return }
+    setPods(prev => prev.map(p => p.id === pod.id ? { ...p, status: 'passed' } : p))
+    showToast(`${pod.name} passed — escrow release unlocked`)
+  }
+
+  async function handleFail(pod) {
+    setActing(pod.id)
+    const { error } = await failProject(pod.id, { reason: failReason })
+    setActing(null)
+    setFailing(null)
+    setFailReason('')
+    if (error) { showToast(`Failed: ${error}`, 'error'); return }
+    setPods(prev => prev.map(p => p.id === pod.id ? { ...p, status: 'failed' } : p))
+    showToast(`${pod.name} marked as failed`)
+  }
+
+  async function handleRelease(pod) {
+    setActing(pod.id)
+    const { error } = await releaseEscrow(pod.id)
+    setActing(null)
+    if (error) { showToast(`Release failed: ${error}`, 'error'); return }
+    setPods(prev => prev.map(p => p.id === pod.id ? { ...p, status: 'released' } : p))
+    showToast(`Escrow released for ${pod.name}`)
+  }
+
+  if (loading) return <div className="flex items-center justify-center py-20"><Spinner size={28} light={false} /></div>
+  if (error)   return <ErrorBanner message={error} onRetry={load} />
+
+  const stats = {
+    total:   pods.length,
+    active:  pods.filter(p => p.status === 'active').length,
+    review:  pods.filter(p => p.status === 'review').length,
+    passed:  pods.filter(p => ['passed','released'].includes(p.status)).length,
+  }
+
+  return (
+    <div>
+      {/* Stats */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4 mb-8">
+        {[
+          { n: stats.total,  lbl: 'Total Pods',  sub: 'All time'         },
+          { n: stats.active, lbl: 'Active',      sub: 'Work in progress' },
+          { n: stats.review, lbl: 'In Review',   sub: 'Awaiting verdict' },
+          { n: stats.passed, lbl: 'Passed',      sub: 'Escrow eligible'  },
+        ].map(s => (
+          <div key={s.lbl} className="bg-white border border-black/[0.07] rounded-[12px] px-4 py-4">
+            <span className="font-serif text-[26px] sm:text-[28px] font-light text-ink tracking-[-0.05em] block leading-none mb-1">{s.n}</span>
+            <span className="font-medium text-[11.5px] text-ink block mb-0.5">{s.lbl}</span>
+            <span className="text-[11px] font-light text-[#AAA]">{s.sub}</span>
+          </div>
+        ))}
+      </div>
+
+      {/* Note */}
+      <div className="flex items-start gap-3 bg-[#F3F4F6] border border-black/[0.06] rounded-[10px] px-4 py-3.5 mb-6">
+        <i className="bi bi-info-circle text-[13px] text-[#999] flex-shrink-0 mt-0.5" />
+        <p className="text-[13px] font-light text-[#888] leading-snug">
+          Pods are created by users. Your role is to review deliverables and pass or fail the project once work is submitted.
+          Passing a project unlocks the escrow claim for pod members.
+        </p>
+      </div>
+
+      {pods.length === 0 ? (
+        <div className="py-20 text-center">
+          <i className="bi bi-people text-[40px] text-[#E0E0E0] block mb-4" />
+          <p className="text-[14px] font-light text-[#C8C8C8]">No pods yet</p>
+        </div>
+      ) : (
+        <div className="space-y-3">
+          {pods.map(pod => (
+            <div key={pod.id} className="bg-white border border-black/[0.07] rounded-[14px] overflow-hidden">
+              {/* Pod header row */}
+              <div
+                className="flex items-center gap-4 px-6 py-4 cursor-pointer hover:bg-black/[0.01] transition-colors"
+                onClick={() => setExpanded(e => e === pod.id ? null : pod.id)}
+              >
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-3 flex-wrap">
+                    <span className="text-[14px] font-medium text-ink tracking-[-0.01em]">{pod.name}</span>
+                    <PodStatusBadge status={pod.status} />
+                  </div>
+                  <div className="flex items-center gap-4 mt-1 flex-wrap">
+                    <span className="text-[12.5px] font-light text-[#999]">{pod.project ?? '—'}</span>
+                    <span className="font-mono text-[10px] text-[#CCC]">{pod.memberCount ?? pod.members?.length ?? 0} members</span>
+                    {pod.escrowAmount && (
+                      <span className="font-mono text-[10px] text-[#1DC433]">{pod.escrowAmount} USDC</span>
+                    )}
+                    <span className="font-mono text-[10px] text-[#CCC]">{pod.createdAt ? new Date(pod.createdAt).toLocaleDateString('en-GB', { day:'numeric', month:'short', year:'numeric'}) : ''}</span>
+                  </div>
+                </div>
+
+                {/* Actions */}
+                <div className="flex items-center gap-2 flex-shrink-0" onClick={e => e.stopPropagation()}>
+                  {pod.status === 'review' && (
+                    <>
+                      <button
+                        onClick={() => handlePass(pod)}
+                        disabled={acting === pod.id}
+                        className="flex items-center gap-1.5 text-[11px] font-medium text-ink bg-[#2DFC44] px-3 py-1.5 rounded-full hover:bg-[#1DC433] transition-colors border-none cursor-pointer font-mono tracking-wide disabled:opacity-50 whitespace-nowrap"
+                      >
+                        {acting === pod.id ? <Spinner size={12} /> : <i className="bi bi-check-lg" />} Pass
+                      </button>
+                      <button
+                        onClick={() => setFailing(pod)}
+                        disabled={acting === pod.id}
+                        className="flex items-center gap-1.5 text-[11px] font-medium text-[#999] border border-black/[0.1] px-3 py-1.5 rounded-full hover:border-red-300 hover:text-red-500 transition-colors bg-transparent cursor-pointer font-mono tracking-wide disabled:opacity-50 whitespace-nowrap"
+                      >
+                        <i className="bi bi-x" /> Fail
+                      </button>
+                    </>
+                  )}
+                  {pod.status === 'passed' && (
+                    <button
+                      onClick={() => handleRelease(pod)}
+                      disabled={acting === pod.id}
+                      className="flex items-center gap-1.5 text-[11px] font-medium text-ink bg-[#2DFC44] px-3 py-1.5 rounded-full hover:bg-[#1DC433] transition-colors border-none cursor-pointer font-mono tracking-wide disabled:opacity-50 whitespace-nowrap"
+                    >
+                      {acting === pod.id ? <Spinner size={12} /> : <i className="bi bi-safe2" />} Release Escrow
+                    </button>
+                  )}
+                  {pod.status === 'released' && (
+                    <span className="font-mono text-[10px] text-[#1DC433] flex items-center gap-1">
+                      <i className="bi bi-check2-circle" /> Escrow released
+                    </span>
+                  )}
+                  <button
+                    className="w-7 h-7 flex items-center justify-center text-[#CCC] hover:text-ink transition-colors bg-transparent border-none cursor-pointer"
+                  >
+                    <i className={`bi bi-chevron-${expanded === pod.id ? 'up' : 'down'} text-[11px]`} />
+                  </button>
+                </div>
+              </div>
+
+              {/* Expanded: deliverables + members + split */}
+              {expanded === pod.id && (
+                <div className="border-t border-black/[0.05] px-6 py-5 space-y-5 bg-[#FAFAF8]"
+                  style={{ animation: 'up 0.2s both' }}>
+
+                  {/* Members + split */}
+                  {pod.members && pod.members.length > 0 && (
+                    <div>
+                      <p className="font-mono text-[10px] tracking-[0.12em] uppercase text-[#AAA] mb-3">Pod Members & Agreed Split</p>
+                      <div className="space-y-2">
+                        {pod.members.map((m, i) => (
+                          <div key={i} className="flex items-center gap-3">
+                            <div className="w-7 h-7 rounded-full bg-black/[0.06] flex items-center justify-center flex-shrink-0">
+                              <span className="font-mono text-[9px] text-[#888]">
+                                {(m.name || '?').split(' ').map(w => w[0]).slice(0,2).join('')}
+                              </span>
+                            </div>
+                            <span className="text-[13px] font-light text-ink flex-1">{m.name ?? m.talentId}</span>
+                            <span className="font-mono text-[11px] text-[#888]">{m.role}</span>
+                            {m.splitPercent != null && (
+                              <span className="font-mono text-[11px] text-[#1DC433] font-medium w-12 text-right">{m.splitPercent}%</span>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                      {pod.splitLocked && (
+                        <p className="font-mono text-[10px] text-[#1DC433] mt-2 flex items-center gap-1">
+                          <i className="bi bi-lock-fill text-[9px]" /> Split locked on-chain
+                        </p>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Deliverables */}
+                  {pod.deliverables && pod.deliverables.length > 0 && (
+                    <div>
+                      <p className="font-mono text-[10px] tracking-[0.12em] uppercase text-[#AAA] mb-3">Deliverables</p>
+                      <div className="space-y-2">
+                        {pod.deliverables.map((d, i) => (
+                          <div key={i} className="flex items-start gap-3 bg-white border border-black/[0.06] rounded-[10px] px-4 py-3">
+                            <div className={`w-5 h-5 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5 ${d.status === 'approved' ? 'bg-[#2DFC44]' : d.status === 'submitted' ? 'bg-amber-100' : 'bg-black/[0.05]'}`}>
+                              <i className={`bi text-[10px] ${d.status === 'approved' ? 'bi-check text-ink' : d.status === 'submitted' ? 'bi-clock text-amber-600' : 'bi-circle text-[#CCC]'}`} />
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <p className="text-[13px] font-medium text-ink tracking-[-0.01em]">{d.title}</p>
+                              {d.description && <p className="text-[12px] font-light text-[#888] mt-0.5">{d.description}</p>}
+                              <div className="flex items-center gap-3 mt-1">
+                                {d.dueDate && <span className="font-mono text-[10px] text-[#CCC]">Due {new Date(d.dueDate).toLocaleDateString('en-GB', { day:'numeric', month:'short' })}</span>}
+                                {d.amount  && <span className="font-mono text-[10px] text-[#1DC433]">{d.amount} USDC</span>}
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {pod.deliverables?.length === 0 && pod.members?.length === 0 && (
+                    <p className="text-[13px] font-light text-[#BBB]">No details available yet.</p>
+                  )}
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Fail modal */}
+      {failing && (
+        <div className="fixed inset-0 z-[600] flex items-center justify-center p-4 bg-ink/40 backdrop-blur-sm">
+          <div className="bg-white rounded-[16px] shadow-2xl w-full max-w-[420px] p-7" style={{ animation: 'up 0.25s both' }}>
+            <h3 className="font-serif text-[20px] font-light tracking-[-0.03em] text-ink mb-1">Fail this project?</h3>
+            <p className="text-[13px] font-light text-[#888] mb-5">
+              <strong className="text-ink">{failing.name}</strong> will be marked as failed. Escrow will not be released.
+            </p>
+            <label className="font-mono text-[10px] tracking-[0.12em] uppercase text-[#999] block mb-2">Reason (optional)</label>
+            <textarea
+              value={failReason}
+              onChange={e => setFailReason(e.target.value)}
+              placeholder="Deliverables not met…"
+              rows={3}
+              className="w-full font-sans text-[13.5px] font-light bg-white border border-black/[0.09] rounded-[10px] px-4 py-3 outline-none focus:border-red-300 resize-none mb-5"
+            />
+            <div className="flex gap-2">
+              <button
+                onClick={() => handleFail(failing)}
+                disabled={acting === failing.id}
+                className="flex-1 flex items-center justify-center gap-2 bg-red-500 text-white py-3 rounded-[10px] font-sans text-[13.5px] font-medium hover:bg-red-600 transition-colors border-none cursor-pointer disabled:opacity-50"
+              >
+                {acting === failing.id ? <Spinner size={16} /> : <i className="bi bi-x-circle" />} Confirm Fail
+              </button>
+              <button
+                onClick={() => { setFailing(null); setFailReason('') }}
+                className="flex-1 py-3 rounded-[10px] border border-black/[0.09] text-[#888] font-sans text-[13.5px] font-light hover:border-black/20 transition-all bg-transparent cursor-pointer"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
 // ── Team Panel (owner only) ───────────────────────────────────────────────────
 
 function TeamPanel({ showToast, currentAdmin }) {
@@ -1236,7 +1263,7 @@ function TeamPanel({ showToast, currentAdmin }) {
 const TABS = [
   { key: 'talents',  icon: 'bi-person-check', label: 'Talent Applications'  },
   { key: 'projects', icon: 'bi-buildings',    label: 'Project Applications' },
-  { key: 'pods',     icon: 'bi-people-fill',  label: 'Pods'                 },
+  { key: 'pods',     icon: 'bi-people-fill',  label: 'Pods Review'                 },
   { key: 'team',     icon: 'bi-shield-lock',  label: 'Team',  ownerOnly: true },
 ]
 
@@ -1244,7 +1271,7 @@ export default function Admin() {
   const { admin, logout } = useAuth()
   const isOwner = admin?.role === 'owner'
 
-  const { pods, loading: loadingPods, create: createPod, reload: reloadPods } = usePods()
+  
 
   // Separate hook instances per type so pagination/sort are independent
   const talentHook  = useApplicants('talent')
@@ -1324,7 +1351,7 @@ export default function Admin() {
             <i className="bi bi-box-arrow-right text-[11px]" />
             <span className="hidden sm:inline">Sign out</span>
           </button>
-          <Link to="/" className="font-mono text-[10px] tracking-[0.1em] uppercase text-[#BBB] hover:text-ink transition-colors flex items-center gap-1.5">
+          <Link href="/" className="font-mono text-[10px] tracking-[0.1em] uppercase text-[#BBB] hover:text-ink transition-colors flex items-center gap-1.5">
             <i className="bi bi-arrow-left text-[11px]" />
             <span className="hidden sm:inline">Back to site</span>
           </Link>
@@ -1370,12 +1397,7 @@ export default function Admin() {
               <ApplicantPanel type="project" onBroadcast={setBroadcastType} showToast={showToast} />
             )}
             {tab === 'pods' && (
-              <PodCreationPanel
-                pods={pods}
-                loadingPods={loadingPods}
-                onCreate={createPod}
-                showToast={showToast}
-              />
+              <PodsPanel showToast={showToast} />
             )}
             {tab === 'team' && isOwner && (
               <TeamPanel showToast={showToast} currentAdmin={admin} />

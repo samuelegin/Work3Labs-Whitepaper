@@ -1,3 +1,6 @@
+'use client'
+import { useRouter, useSearchParams } from 'next/navigation'
+import Link from 'next/link'
 /**
  * Work3 Labs — Admin Reset Password
  *
@@ -15,8 +18,8 @@
  */
 
 import { useState, useRef, useEffect } from 'react'
-import { Link, useSearchParams } from 'react-router-dom'
-import { adminResetPassword } from '../services/api'
+
+import { adminResetPassword } from '@/services/api'
 
 const INPUT_BASE = [
   'w-full font-sans text-[14px] font-light bg-white text-ink',
@@ -61,7 +64,7 @@ function StrengthBar({ password }) {
   )
 }
 
-export default function AdminResetPassword() {
+export default function AdminResetPasswordClient() {
   const [params] = useSearchParams()
   const token = params.get('token') ?? ''
 
@@ -154,7 +157,7 @@ export default function AdminResetPassword() {
             Your admin password has been changed. Sign in with your new credentials.
           </p>
           <Link
-            to="/admin/login"
+            href="/admin/login"
             className="flex items-center gap-2 font-mono text-[10px] tracking-[0.1em] uppercase text-ink border border-black/[0.12] rounded-full px-5 py-2.5 hover:bg-black/[0.04] transition-colors"
           >
             <i className="bi bi-box-arrow-in-right text-[11px]" />
@@ -172,7 +175,7 @@ export default function AdminResetPassword() {
       style={{ fontFamily: 'Outfit, sans-serif' }}
     >
       <div className="absolute top-5 left-5 sm:top-7 sm:left-7 z-10">
-        <Link to="/admin/login"
+        <Link href="/admin/login"
           className="flex items-center gap-2 font-mono text-[10px] tracking-[0.1em] uppercase text-[#BBB] hover:text-ink transition-colors">
           <i className="bi bi-arrow-left text-[11px]" />
           <span className="hidden sm:inline">Back to login</span>
@@ -281,7 +284,7 @@ export default function AdminResetPassword() {
                 )}
               </button>
 
-              <Link to="/admin/login"
+              <Link href="/admin/login"
                 className="w-full py-3 rounded-[10px] border border-black/[0.09] text-[#888] font-sans text-[13.5px] font-light hover:border-black/20 hover:text-ink transition-all flex items-center justify-center">
                 Cancel
               </Link>
@@ -332,13 +335,13 @@ function InvalidLink({ reason, showTryAgain }) {
         </p>
         <div className="flex flex-col gap-2.5 w-full">
           {showTryAgain && (
-            <Link to="/admin/forgot-password"
+            <Link href="/admin/forgot-password"
               className="w-full py-3 rounded-[10px] bg-ink text-paper font-sans text-[13.5px] font-medium flex items-center justify-center gap-2 hover:bg-[#1A1A1A] transition-colors">
               <i className="bi bi-arrow-repeat text-[13px]" />
               Request a new link
             </Link>
           )}
-          <Link to="/admin/login"
+          <Link href="/admin/login"
             className="w-full py-3 rounded-[10px] border border-black/[0.09] text-[#888] font-sans text-[13.5px] font-light flex items-center justify-center hover:border-black/20 hover:text-ink transition-all">
             Back to login
           </Link>

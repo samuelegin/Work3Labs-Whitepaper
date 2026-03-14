@@ -1,3 +1,4 @@
+'use client'
 const features = [
   { n:'8.1', title:'Pod Formation Engine', body:'Structured team creation based on skill domains, availability, and performance history. Supports both manual curation in Phase 1 and AI-assisted matching from Phase 2 onward. Ensures role coverage and cross-functional balance before any pod is deployed to a project.' },
   { n:'8.2', title:'Execution Tracking', body:'Real-time milestone and deliverable tracking across all active pod engagements. Projects get full visibility into completion rates, delivery timelines, and output quality. Every tracked event feeds directly into PoP record generation at completion.' },
