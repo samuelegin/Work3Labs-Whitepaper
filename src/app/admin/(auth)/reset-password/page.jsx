@@ -15,7 +15,7 @@
  *  - token expired / invalid → error screen with link to try again
  */
 
-import { useState, useRef, useEffect } from 'react'
+import { useState, useRef, useEffect, Suspense } from 'react'
 import Link from 'next/link'
 import { useSearchParams } from 'next/navigation'
 import { adminResetPassword } from '@/services/api'
@@ -63,7 +63,7 @@ function StrengthBar({ password }) {
   )
 }
 
-export default function AdminResetPassword() {
+function AdminResetPassword() {
   const params = useSearchParams()
   const token = params.get('token') ?? ''
 
@@ -347,5 +347,13 @@ function InvalidLink({ reason, showTryAgain }) {
         </div>
       </div>
     </Shell>
+  )
+}
+
+export default function ResetPasswordPage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen bg-paper" />}>
+      <AdminResetPassword />
+    </Suspense>
   )
 }

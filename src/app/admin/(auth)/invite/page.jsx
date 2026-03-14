@@ -14,7 +14,7 @@
  *  invalid     — token missing, expired, or already used
  */
 
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, Suspense } from 'react'
 import Link from 'next/link'
 import { useSearchParams } from 'next/navigation'
 import { validateInviteToken, acceptAdminInvite } from '@/services/api'
@@ -85,7 +85,7 @@ function Shell({ children }) {
   )
 }
 
-export default function AdminAcceptInvite() {
+function AdminAcceptInvite() {
   const params = useSearchParams()
   const token = params.get('token') ?? ''
 
@@ -324,5 +324,13 @@ export default function AdminAcceptInvite() {
 
       </div>
     </Shell>
+  )
+}
+
+export default function InvitePage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen bg-paper" />}>
+      <AdminAcceptInvite />
+    </Suspense>
   )
 }

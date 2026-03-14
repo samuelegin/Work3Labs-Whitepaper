@@ -1,5 +1,5 @@
 'use client'
-import { useState, useEffect } from 'react'
+import { useState, useEffect, Suspense } from 'react'
 import Link from 'next/link'
 import { useSearchParams } from 'next/navigation'
 
@@ -34,7 +34,7 @@ const inputBase = `font-sans text-[14px] font-light text-ink bg-white border-[1.
   focus:border-green focus:shadow-[0_0_0_3px_rgba(45,252,68,0.08)]`
 const inputErr  = `border-[#E53E3E] shadow-[0_0_0_3px_rgba(229,62,62,0.06)]`
 
-export default function Apply() {
+function Apply() {
   const params = useSearchParams()
   const [mode, setMode]         = useState(params.get('type') === 'project' ? 'project' : 'talent')
   const [consented, setConsented] = useState(false)
@@ -327,5 +327,13 @@ export default function Apply() {
         </div>
       </div>
     </div>
+  )
+}
+
+export default function ApplyPage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen bg-paper" />}>
+      <Apply />
+    </Suspense>
   )
 }
