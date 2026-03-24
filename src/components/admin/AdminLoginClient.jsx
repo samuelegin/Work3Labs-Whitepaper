@@ -46,10 +46,10 @@ export default function AdminLoginClient() {
   const router = useRouter()
   const emailRef = useRef(null)
 
-  const [email,      setEmail]      = useState('')
-  const [password,   setPassword]   = useState('')
-  const [showPwd,    setShowPwd]    = useState(false)
-  const [errors,     setErrors]     = useState({})
+  const [email, setEmail] = useState('')
+  const [password, setPassword] = useState('')
+  const [showPwd, setShowPwd] = useState(false)
+  const [errors, setErrors] = useState({})
   const [submitting, setSubmitting] = useState(false)
 
   useEffect(() => { emailRef.current?.focus() }, [])

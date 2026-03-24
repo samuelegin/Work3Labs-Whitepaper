@@ -2,11 +2,22 @@
 /**
  * usePods
  *
- * Manages pod list and creation for the Pods tab.
+ * Fetches all user-created pods.
+ * Admin views pod details (name, description, members, split),
+ * matches pods to projects, passes/fails work, releases escrow,
+ * and can unmatch a pod if needed.
  */
 
 import { useState, useEffect, useCallback } from 'react'
-import { fetchPods, createPod } from '../services/api'
+import {
+  fetchPods,
+  fetchPodById,
+  matchPodToProject,
+  unmatchPod,
+  passProject,
+  failProject,
+  releaseEscrow,
+} from '../services/api'
 
 export function usePods() {
   const [pods,    setPods]    = useState([])
@@ -24,12 +35,48 @@ export function usePods() {
 
   useEffect(() => { load() }, [load])
 
-  async function create(body) {
-    const { data, error } = await createPod(body)
-    if (error) return { error }
-    setPods(prev => [data.pod, ...prev])
-    return { error: null, pod: data.pod }
+  function updatePod(id, patch) {
+    setPods(prev => prev.map(p => p.id === id ? { ...p, ...patch } : p))
   }
 
-  return { pods, loading, error, create, reload: load }
+  async function match(podId, projectId) {
+    const { data, error } = await matchPodToProject(podId, projectId)
+    if (error) return { error }
+    updatePod(podId, { projectId, matched: true, status: 'matched' })
+    return { error: null, data }
+  }
+
+  async function unmatch(podId) {
+    const { error } = await unmatchPod(podId)
+    if (error) return { error }
+    updatePod(podId, { projectId: null, matched: false, status: 'unmatched' })
+    return { error: null }
+  }
+
+  async function pass(podId) {
+    const { error } = await passProject(podId)
+    if (error) return { error }
+    updatePod(podId, { status: 'passed' })
+    return { error: null }
+  }
+
+  async function fail(podId, reason) {
+    const { error } = await failProject(podId, { reason })
+    if (error) return { error }
+    updatePod(podId, { status: 'failed' })
+    return { error: null }
+  }
+
+  async function release(podId) {
+    const { error } = await releaseEscrow(podId)
+    if (error) return { error }
+    updatePod(podId, { status: 'released' })
+    return { error: null }
+  }
+
+  async function detail(podId) {
+    return fetchPodById(podId)
+  }
+
+  return { pods, loading, error, match, unmatch, pass, fail, release, detail, reload: load }
 }

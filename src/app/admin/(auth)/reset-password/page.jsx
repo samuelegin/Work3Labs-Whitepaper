@@ -1,19 +1,4 @@
 'use client'
-/**
- * Work3 Labs — Admin Reset Password
- *
- * Route: /admin/reset-password?token=<TOKEN>
- *
- * Landed on from the reset link sent by /admin/forgot-password.
- * Reads the token from the URL query string, lets admin set a new password,
- * then POSTs to /api/admin/reset-password.
- *
- * States:
- *  - no token in URL         → "invalid link" screen
- *  - valid token, form shown → submit new password
- *  - success                 → confirmation + link to login
- *  - token expired / invalid → error screen with link to try again
- */
 
 import { useState, useRef, useEffect, Suspense } from 'react'
 import Link from 'next/link'
@@ -38,10 +23,10 @@ function StrengthBar({ password }) {
   const score = (() => {
     if (!password) return 0
     let s = 0
-    if (password.length >= 8)          s++
-    if (password.length >= 12)         s++
-    if (/[A-Z]/.test(password))        s++
-    if (/[0-9]/.test(password))        s++
+    if (password.length >= 8) s++
+    if (password.length >= 12) s++
+    if (/[A-Z]/.test(password)) s++
+    if (/[0-9]/.test(password)) s++
     if (/[^A-Za-z0-9]/.test(password)) s++
     return s
   })()
@@ -67,19 +52,18 @@ function AdminResetPassword() {
   const params = useSearchParams()
   const token = params.get('token') ?? ''
 
-  const [password,    setPassword]    = useState('')
-  const [confirm,     setConfirm]     = useState('')
-  const [showPwd,     setShowPwd]     = useState(false)
+  const [password, setPassword] = useState('')
+  const [confirm, setConfirm] = useState('')
+  const [showPwd, setShowPwd] = useState(false)
   const [showConfirm, setShowConfirm] = useState(false)
-  const [errors,      setErrors]      = useState({})
-  const [submitting,  setSubmitting]  = useState(false)
-  const [done,        setDone]        = useState(false)
-  const [tokenError,  setTokenError]  = useState(false)
+  const [errors, setErrors] = useState({})
+  const [submitting, setSubmitting] = useState(false)
+  const [done, setDone] = useState(false)
+  const [tokenError, setTokenError] = useState(false)
 
   const pwdRef = useRef(null)
   useEffect(() => { pwdRef.current?.focus() }, [])
 
-  // If no token in URL — show invalid link screen immediately
   if (!token) {
     return <InvalidLink reason="No reset token found in this link." />
   }
@@ -113,7 +97,6 @@ function AdminResetPassword() {
     setSubmitting(false)
 
     if (error) {
-      // Token expired or invalid
       if (
         error.includes('400') ||
         error.includes('401') ||
@@ -136,12 +119,10 @@ function AdminResetPassword() {
     setDone(true)
   }
 
-  // ── Token expired / invalid screen ──────────────────────────────────────────
   if (tokenError) {
     return <InvalidLink reason="This reset link has expired or has already been used." showTryAgain />
   }
 
-  // ── Success screen ──────────────────────────────────────────────────────────
   if (done) {
     return (
       <Shell>
@@ -167,7 +148,7 @@ function AdminResetPassword() {
     )
   }
 
-  // ── Reset form ──────────────────────────────────────────────────────────────
+  //Reset form 
   return (
     <div
       className="min-h-screen bg-paper flex flex-col relative overflow-hidden mesh-green-tr mesh-blue-bl"
@@ -300,7 +281,7 @@ function AdminResetPassword() {
   )
 }
 
-// ── Shared sub-components ─────────────────────────────────────────────────────
+//Shared sub-components
 
 function Shell({ children }) {
   return (

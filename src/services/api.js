@@ -1,11 +1,5 @@
 'use client'
 
-/**
- * Work3 Labs — API Service Layer
- * Next.js version — uses NEXT_PUBLIC_API_URL instead of VITE_API_URL
- * Every function returns { data, error } — never throws.
- */
-
 function getBase() {
   return process.env.NEXT_PUBLIC_API_URL ?? '/api'
 }
@@ -42,12 +36,12 @@ function qs(params) {
   return p.length ? '?' + new URLSearchParams(p).toString() : ''
 }
 
-// ── Public ────────────────────────────────────────────────────────────────────
+// ── Public
 export async function submitApplication({ fn, ln, em, un, co, type }) {
   return request('POST', '/applicants', { fn, ln, em, un, co, type })
 }
 
-// ── Applicants ────────────────────────────────────────────────────────────────
+// ── Applicants
 export async function fetchApplicants({ type, page = 1, limit = 50, sort = 'applied', dir = 'desc', status } = {}) {
   return request('GET', `/admin/applicants${qs({ type, page, limit, sort, dir, status })}`)
 }
@@ -67,9 +61,12 @@ export async function resetAllApplicants() {
   return request('DELETE', '/admin/applicants')
 }
 
-// ── Pods (read-only in admin — pods are user-created) ─────────────────────────
+// ── Pods — user-created, admin matches to projects
 export async function fetchPods() {
   return request('GET', '/admin/pods')
+}
+export async function matchPodToProject(podId, projectId) {
+  return request('PATCH', `/admin/pods/${podId}/match`, { projectId })
 }
 export async function passProject(podId) {
   return request('PATCH', `/admin/pods/${podId}/pass`)
@@ -80,8 +77,27 @@ export async function failProject(podId, { reason } = {}) {
 export async function releaseEscrow(podId) {
   return request('POST', `/admin/pods/${podId}/release`)
 }
+export async function fetchPodById(podId) {
+  return request('GET', `/admin/pods/${podId}`)
+}
+export async function unmatchPod(podId) {
+  return request('PATCH', `/admin/pods/${podId}/unmatch`)
+}
 
-// ── Auth ──────────────────────────────────────────────────────────────────────
+// ── Waitlist
+export async function fetchWaitlist({ page = 1, limit = 50 } = {}) {
+  return request('GET', `/admin/waitlist${qs({ page, limit })}`)
+}
+export async function deleteWaitlistEntry(id) {
+  return request('DELETE', `/admin/waitlist/${id}`)
+}
+
+// ── Activity feed
+export async function fetchActivity({ limit = 30 } = {}) {
+  return request('GET', `/admin/activity${qs({ limit })}`)
+}
+
+// ── Auth
 export async function adminLogin({ email, password }) {
   return request('POST', '/admin/login', { email, password })
 }

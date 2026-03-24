@@ -1,18 +1,4 @@
 'use client'
-/**
- * Work3 Labs — Admin Accept Invite
- *
- * Route: /admin/invite?token=<TOKEN>
- *
- * Invited admins land here from their email link.
- * They set their name + password to activate their account.
- *
- * States:
- *  validating  — checking token with backend on mount
- *  form        — token valid, show name + password fields
- *  done        — account activated, show success + link to login
- *  invalid     — token missing, expired, or already used
- */
 
 import { useState, useEffect, useRef, Suspense } from 'react'
 import Link from 'next/link'
@@ -42,10 +28,10 @@ function StrengthBar({ password }) {
   const score = (() => {
     if (!password) return 0
     let s = 0
-    if (password.length >= 8)          s++
-    if (password.length >= 12)         s++
-    if (/[A-Z]/.test(password))        s++
-    if (/[0-9]/.test(password))        s++
+    if (password.length >= 8) s++
+    if (password.length >= 12) s++
+    if (/[A-Z]/.test(password)) s++
+    if (/[0-9]/.test(password)) s++
     if (/[^A-Za-z0-9]/.test(password)) s++
     return s
   })()
@@ -88,19 +74,17 @@ function Shell({ children }) {
 function AdminAcceptInvite() {
   const params = useSearchParams()
   const token = params.get('token') ?? ''
-
-  const [stage,       setStage]       = useState('validating') // validating | form | done | invalid
+  const [stage, setStage] = useState('validating')
   const [inviteEmail, setInviteEmail] = useState('')
-  const [name,        setName]        = useState('')
-  const [password,    setPassword]    = useState('')
-  const [confirm,     setConfirm]     = useState('')
-  const [showPwd,     setShowPwd]     = useState(false)
-  const [showConf,    setShowConf]    = useState(false)
-  const [errors,      setErrors]      = useState({})
-  const [submitting,  setSubmitting]  = useState(false)
+  const [name, setName] = useState('')
+  const [password, setPassword] = useState('')
+  const [confirm, setConfirm] = useState('')
+  const [showPwd, setShowPwd] = useState(false)
+  const [showConf, setShowConf] = useState(false)
+  const [errors, setErrors] = useState({})
+  const [submitting, setSubmitting]  = useState(false)
   const nameRef = useRef(null)
 
-  // Validate token on mount
   useEffect(() => {
     if (!token) { setStage('invalid'); return }
 
@@ -149,14 +133,12 @@ function AdminAcceptInvite() {
       return
     }
 
-    // Auto-save token so they can go straight to dashboard
     if (data?.token) {
       
     }
     setStage('done')
   }
 
-  // ── Validating ───────────────────────────────────────────────────────────────
   if (stage === 'validating') {
     return (
       <Shell>
@@ -168,7 +150,7 @@ function AdminAcceptInvite() {
     )
   }
 
-  // ── Invalid / expired ────────────────────────────────────────────────────────
+  //Invalid / expired
   if (stage === 'invalid') {
     return (
       <Shell>
@@ -191,7 +173,6 @@ function AdminAcceptInvite() {
     )
   }
 
-  // ── Done ─────────────────────────────────────────────────────────────────────
   if (stage === 'done') {
     return (
       <Shell>
@@ -216,7 +197,7 @@ function AdminAcceptInvite() {
     )
   }
 
-  // ── Form ─────────────────────────────────────────────────────────────────────
+  // Form 
   return (
     <Shell>
       <div className="bg-white border border-black/[0.07] rounded-2xl shadow-[0_2px_40px_rgba(0,0,0,0.06)] overflow-hidden">

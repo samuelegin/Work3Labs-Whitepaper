@@ -2,14 +2,9 @@
 import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 /**
- * Work3 Labs — Admin Accept Invite
- *
- * Route: /admin/invite?token=<TOKEN>
- *
- * Invited admins land here from their email link.
- * They set their name + password to activate their account.
- *
- * States:
+ * Invited admins land here from their email link, they set their name and password to activate their account.
+ 
+ States:
  *  validating  — checking token with backend on mount
  *  form        — token valid, show name + password fields
  *  done        — account activated, show success + link to login
@@ -43,7 +38,7 @@ function StrengthBar({ password }) {
   const score = (() => {
     if (!password) return 0
     let s = 0
-    if (password.length >= 8)          s++
+    if (password.length >= 8)    s++
     if (password.length >= 12)         s++
     if (/[A-Z]/.test(password))        s++
     if (/[0-9]/.test(password))        s++
@@ -69,7 +64,7 @@ function StrengthBar({ password }) {
 }
 
 function Shell({ children }) {
-  return (
+  return (   
     <div className="min-h-screen bg-paper flex flex-col items-center justify-center px-4 py-16 mesh-green-tr mesh-blue-bl"
       style={{ fontFamily: 'Outfit, sans-serif' }}>
       <div className="w-full max-w-[420px]" style={{ animation: 'up 0.5s cubic-bezier(0.22,1,0.36,1) both' }}>
@@ -90,15 +85,15 @@ export default function AdminAcceptInviteClient() {
   const [params] = useSearchParams()
   const token = params.get('token') ?? ''
 
-  const [stage,       setStage]       = useState('validating') // validating | form | done | invalid
+  const [stage, setStage] = useState('validating') // validating | form | done | invalid
   const [inviteEmail, setInviteEmail] = useState('')
-  const [name,        setName]        = useState('')
-  const [password,    setPassword]    = useState('')
-  const [confirm,     setConfirm]     = useState('')
-  const [showPwd,     setShowPwd]     = useState(false)
-  const [showConf,    setShowConf]    = useState(false)
-  const [errors,      setErrors]      = useState({})
-  const [submitting,  setSubmitting]  = useState(false)
+  const [name, setName] = useState('')
+  const [password, setPassword] = useState('')
+  const [confirm, setConfirm] = useState('')
+  const [showPwd, setShowPwd] = useState(false)
+  const [showConf, setShowConf] = useState(false)
+  const [errors, setErrors] = useState({})
+  const [submitting, setSubmitting]  = useState(false)
   const nameRef = useRef(null)
 
   // Validate token on mount
@@ -118,10 +113,10 @@ export default function AdminAcceptInviteClient() {
 
   function validate() {
     const e = {}
-    if (!name.trim())    e.name = 'Full name is required'
-    if (!password)       e.password = 'Password is required'
+    if (!name.trim()) e.name = 'Full name is required'
+    if (!password) e.password = 'Password is required'
     else if (password.length < 8) e.password = 'Minimum 8 characters'
-    if (!confirm)        e.confirm = 'Please confirm your password'
+    if (!confirm) e.confirm = 'Please confirm your password'
     else if (confirm !== password) e.confirm = 'Passwords do not match'
     setErrors(e)
     return Object.keys(e).length === 0
@@ -157,7 +152,7 @@ export default function AdminAcceptInviteClient() {
     setStage('done')
   }
 
-  // ── Validating ───────────────────────────────────────────────────────────────
+  // Validating
   if (stage === 'validating') {
     return (
       <Shell>
@@ -169,7 +164,7 @@ export default function AdminAcceptInviteClient() {
     )
   }
 
-  // ── Invalid / expired ────────────────────────────────────────────────────────
+  // Invalid / expired
   if (stage === 'invalid') {
     return (
       <Shell>
@@ -192,7 +187,7 @@ export default function AdminAcceptInviteClient() {
     )
   }
 
-  // ── Done ─────────────────────────────────────────────────────────────────────
+  //Done
   if (stage === 'done') {
     return (
       <Shell>
@@ -217,7 +212,7 @@ export default function AdminAcceptInviteClient() {
     )
   }
 
-  // ── Form ─────────────────────────────────────────────────────────────────────
+  // Form
   return (
     <Shell>
       <div className="bg-white border border-black/[0.07] rounded-2xl shadow-[0_2px_40px_rgba(0,0,0,0.06)] overflow-hidden">

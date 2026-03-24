@@ -1,13 +1,5 @@
 'use client'
 /**
- * Work3 Labs — Admin Setup
- *
- * Route: /admin/setup
- *
- * First-time admin account creation. Accessible only when no admin exists yet.
- * The backend enforces this — once an admin is registered, this endpoint returns
- * 403 and this page shows a "setup already complete" screen.
- *
  * Requires a setupKey (a secret set in backend env as ADMIN_SETUP_KEY) to
  * prevent anyone who finds this URL from creating an admin account.
  *
@@ -112,7 +104,7 @@ export default function AdminSetup() {
   const { login } = useAuth()
 
   const [fields, setFields] = useState({ name: '', email: '', password: '', confirm: '', setupKey: '' })
-  const [show,   setShow]   = useState({ password: false, confirm: false, setupKey: false })
+  const [show, setShow] = useState({ password: false, confirm: false, setupKey: false })
   const [errors, setErrors] = useState({})
   const [submitting, setSubmitting] = useState(false)
   const [alreadyDone, setAlreadyDone] = useState(false)
@@ -193,7 +185,7 @@ export default function AdminSetup() {
     }
   }
 
-  // ── Already set up screen ────────────────────────────────────────────────────
+  // Already set up screen 
   if (alreadyDone) {
     return (
       <div className="min-h-screen bg-paper flex flex-col items-center justify-center px-4 mesh-green-tr mesh-blue-bl">
@@ -223,7 +215,7 @@ export default function AdminSetup() {
     )
   }
 
-  // ── Setup form ───────────────────────────────────────────────────────────────
+  //Setup form
   return (
     <div
       className="min-h-screen bg-paper flex flex-col relative overflow-hidden mesh-green-tr mesh-blue-bl"

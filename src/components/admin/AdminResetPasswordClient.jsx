@@ -39,10 +39,10 @@ function StrengthBar({ password }) {
   const score = (() => {
     if (!password) return 0
     let s = 0
-    if (password.length >= 8)          s++
-    if (password.length >= 12)         s++
-    if (/[A-Z]/.test(password))        s++
-    if (/[0-9]/.test(password))        s++
+    if (password.length >= 8) s++
+    if (password.length >= 12) s++
+    if (/[A-Z]/.test(password)) s++
+    if (/[0-9]/.test(password)) s++
     if (/[^A-Za-z0-9]/.test(password)) s++
     return s
   })()
@@ -137,12 +137,12 @@ export default function AdminResetPasswordClient() {
     setDone(true)
   }
 
-  // ── Token expired / invalid screen ──────────────────────────────────────────
+  //Token expired / invalid screen 
   if (tokenError) {
     return <InvalidLink reason="This reset link has expired or has already been used." showTryAgain />
   }
 
-  // ── Success screen ──────────────────────────────────────────────────────────
+  //Success screen
   if (done) {
     return (
       <Shell>
@@ -168,7 +168,7 @@ export default function AdminResetPasswordClient() {
     )
   }
 
-  // ── Reset form ──────────────────────────────────────────────────────────────
+  //Reset form
   return (
     <div
       className="min-h-screen bg-paper flex flex-col relative overflow-hidden mesh-green-tr mesh-blue-bl"
@@ -301,7 +301,7 @@ export default function AdminResetPasswordClient() {
   )
 }
 
-// ── Shared sub-components ─────────────────────────────────────────────────────
+//Shared sub-components
 
 function Shell({ children }) {
   return (

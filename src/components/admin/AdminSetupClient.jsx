@@ -194,7 +194,7 @@ export default function AdminSetupClient() {
     }
   }
 
-  // ── Already set up screen ────────────────────────────────────────────────────
+  //Already set up screen
   if (alreadyDone) {
     return (
       <div className="min-h-screen bg-paper flex flex-col items-center justify-center px-4 mesh-green-tr mesh-blue-bl">
@@ -224,7 +224,7 @@ export default function AdminSetupClient() {
     )
   }
 
-  // ── Setup form ───────────────────────────────────────────────────────────────
+  //Setup form
   return (
     <div
       className="min-h-screen bg-paper flex flex-col relative overflow-hidden mesh-green-tr mesh-blue-bl"

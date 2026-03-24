@@ -1,19 +1,8 @@
 'use client'
 /**
- * Work3 Labs — Admin Forgot Password
- *
- * Route: /admin/forgot-password
- *
- * Flow:
- *  1. Admin enters email
- *  2. POST /api/admin/forgot-password → server sends reset link
- *  3. Success screen shown (same regardless of whether email exists — no enumeration)
- *  4. Link back to login
- *
  * Security note: The success message is intentionally identical whether or not
  * the email exists in the system. This prevents user enumeration attacks.
  */
-
 import { useState, useRef, useEffect } from 'react'
 import Link from 'next/link'
 import { adminForgotPassword } from '@/services/api'
@@ -35,11 +24,11 @@ function Spinner() {
 }
 
 export default function AdminForgotPassword() {
-  const [email,      setEmail]      = useState('')
+  const [email, setEmail] = useState('')
   const [emailError, setEmailError] = useState('')
   const [serverError,setServerError]= useState('')
   const [submitting, setSubmitting] = useState(false)
-  const [sent,       setSent]       = useState(false)
+  const [sent, setSent] = useState(false)
   const inputRef = useRef(null)
 
   useEffect(() => { inputRef.current?.focus() }, [])
@@ -67,7 +56,6 @@ export default function AdminForgotPassword() {
       return
     }
 
-    // Always show success to prevent email enumeration — even on API error
     setSent(true)
   }
 
@@ -100,7 +88,7 @@ export default function AdminForgotPassword() {
 
           <div className="bg-white border border-black/[0.07] rounded-2xl shadow-[0_2px_40px_rgba(0,0,0,0.06)] overflow-hidden">
             {sent ? (
-              /* ── Success screen ── */
+              /* Success screen */
               <div className="px-7 py-12 flex flex-col items-center text-center" style={{ animation: 'up 0.35s both' }}>
                 <div className="w-14 h-14 rounded-full bg-[#2DFC44] flex items-center justify-center mb-5 pop-anim">
                   <i className="bi bi-envelope-check text-[22px] text-ink" />
@@ -122,7 +110,7 @@ export default function AdminForgotPassword() {
                 </Link>
               </div>
             ) : (
-              /* ── Request form ── */
+              /* Request form */
               <>
                 <div className="px-7 pt-7 pb-6 border-b border-black/[0.06]">
                   <h1 className="font-serif text-[22px] font-light tracking-[-0.04em] text-ink mb-0.5">

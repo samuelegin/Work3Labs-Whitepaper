@@ -4,7 +4,7 @@ import Link from 'next/link'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { useAuth } from '@/hooks/useAuth'
 
-// ── Shared input token ────────────────────────────────────────────────────────
+//Shared input token 
 
 const INPUT_BASE = [
   'w-full font-sans text-[14px] font-light bg-white text-ink',
@@ -18,7 +18,7 @@ function inputCls(hasError) {
     : `${INPUT_BASE} border-black/[0.09] focus:border-[#1DC433] focus:shadow-[0_0_0_3px_rgba(45,252,68,0.08)]`
 }
 
-// ── Spinner ───────────────────────────────────────────────────────────────────
+//Spinner
 
 function Spinner() {
   return (
@@ -28,7 +28,7 @@ function Spinner() {
   )
 }
 
-// ── Field ─────────────────────────────────────────────────────────────────────
+//Field
 
 function Field({ id, label, type, value, onChange, onKeyDown, error, placeholder, autoComplete, autoFocus, rightSlot }) {
   return (
@@ -62,7 +62,7 @@ function Field({ id, label, type, value, onChange, onKeyDown, error, placeholder
   )
 }
 
-// ── AdminLogin ────────────────────────────────────────────────────────────────
+//AdminLogin 
 
 function AdminLogin() {
   const { login, loading } = useAuth()
@@ -73,16 +73,15 @@ function AdminLogin() {
   const emailRef  = useRef(null)
 
 
-  const [email,      setEmail]      = useState('')
-  const [password,   setPassword]   = useState('')
-  const [showPwd,    setShowPwd]    = useState(false)
-  const [errors,     setErrors]     = useState({})     // { email, password, server }
+  const [email, setEmail] = useState('')
+  const [password, setPassword] = useState('')
+  const [showPwd, setShowPwd] = useState(false)
+  const [errors, setErrors] = useState({})  
   const [submitting, setSubmitting] = useState(false)
 
-  // Focus email on mount
   useEffect(() => { emailRef.current?.focus() }, [])
 
-  // ── Validation ──────────────────────────────────────────────────────────────
+  //Validation
 
   function validate() {
     const next = {}
@@ -98,8 +97,7 @@ function AdminLogin() {
     return Object.keys(next).length === 0
   }
 
-  // ── Handlers ────────────────────────────────────────────────────────────────
-
+  //Handlers 
   function handleReset() {
     setEmail('')
     setPassword('')
@@ -121,7 +119,6 @@ function AdminLogin() {
     const { error } = await login({ email: email.trim(), password })
 
     if (error) {
-      // Map common server errors to human-readable messages
       const msg =
         error.includes('401') || error.toLowerCase().includes('invalid') || error.toLowerCase().includes('credential')
           ? 'Invalid email or password. Please try again.'
@@ -138,7 +135,7 @@ function AdminLogin() {
     router.push('/admin/dashboard')
   }
 
-  // ── Render ──────────────────────────────────────────────────────────────────
+  //Render
 
   return (
     <div

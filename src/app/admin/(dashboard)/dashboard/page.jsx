@@ -718,12 +718,14 @@ function ApplicantPanel({ type, onBroadcast, showToast }) {
 // ── Pods Review Panel (read-only — pods created by users, admin reviews) ──────
 
 const POD_STATUS = {
-  forming:   { bg: 'bg-blue-50',   text: 'text-blue-700',  dot: 'bg-blue-400',  label: 'Forming'   },
-  active:    { bg: 'bg-amber-50',  text: 'text-amber-700', dot: 'bg-amber-400', label: 'Active'    },
-  review:    { bg: 'bg-purple-50', text: 'text-purple-700',dot: 'bg-purple-400',label: 'In Review' },
-  passed:    { bg: 'bg-[#F0FDF4]', text: 'text-green-700', dot: 'bg-green-500', label: 'Passed'    },
-  failed:    { bg: 'bg-red-50',    text: 'text-red-600',   dot: 'bg-red-400',   label: 'Failed'    },
-  released:  { bg: 'bg-[#F0FDF4]', text: 'text-green-800', dot: 'bg-green-600', label: 'Released'  },
+  forming:        { bg: 'bg-blue-50',    text: 'text-blue-700',   dot: 'bg-blue-400',   label: 'Forming'         },
+  pending_split:  { bg: 'bg-orange-50',  text: 'text-orange-700', dot: 'bg-orange-400', label: 'Pending Split'   },
+  pending_escrow: { bg: 'bg-yellow-50',  text: 'text-yellow-700', dot: 'bg-yellow-400', label: 'Awaiting Escrow' },
+  active:         { bg: 'bg-amber-50',   text: 'text-amber-700',  dot: 'bg-amber-400',  label: 'Active'          },
+  review:         { bg: 'bg-purple-50',  text: 'text-purple-700', dot: 'bg-purple-400', label: 'In Review'       },
+  passed:         { bg: 'bg-[#F0FDF4]',  text: 'text-green-700',  dot: 'bg-green-500',  label: 'Passed'          },
+  failed:         { bg: 'bg-red-50',     text: 'text-red-600',    dot: 'bg-red-400',    label: 'Failed'          },
+  released:       { bg: 'bg-[#F0FDF4]',  text: 'text-green-800',  dot: 'bg-green-600',  label: 'Released'        },
 }
 
 function PodStatusBadge({ status }) {
@@ -737,13 +739,15 @@ function PodStatusBadge({ status }) {
 }
 
 function PodsPanel({ showToast }) {
-  const [pods,       setPods]       = useState([])
-  const [loading,    setLoading]    = useState(true)
-  const [error,      setError]      = useState(null)
-  const [expanded,   setExpanded]   = useState(null)   // pod id expanded
-  const [failReason, setFailReason] = useState('')
-  const [failing,    setFailing]    = useState(null)   // pod being failed
-  const [acting,     setActing]     = useState(null)   // pod id with action in progress
+  const [pods,        setPods]        = useState([])
+  const [loading,     setLoading]     = useState(true)
+  const [error,       setError]       = useState(null)
+  const [expanded,    setExpanded]    = useState(null)
+  const [activeTab,   setActiveTab]   = useState({})   // per-pod expanded tab: 'details' | 'chat'
+  const [filter,      setFilter]      = useState('all')
+  const [failReason,  setFailReason]  = useState('')
+  const [failing,     setFailing]     = useState(null)
+  const [acting,      setActing]      = useState(null)
 
   async function load() {
     setLoading(true); setError(null)
@@ -756,6 +760,13 @@ function PodsPanel({ showToast }) {
   useEffect(() => { load() }, [])
 
   async function handlePass(pod) {
+    // Guard — all deliverables must be approved
+    const allApproved = pod.deliverables?.length > 0 &&
+      pod.deliverables.every(d => d.status === 'approved')
+    if (!allApproved) {
+      showToast('All deliverables must be approved before passing', 'error')
+      return
+    }
     setActing(pod.id)
     const { error } = await passProject(pod.id)
     setActing(null)
@@ -784,178 +795,382 @@ function PodsPanel({ showToast }) {
     showToast(`Escrow released for ${pod.name}`)
   }
 
+  function podTab(id) { return activeTab[id] ?? 'details' }
+  function setPodTab(id, tab) { setActiveTab(t => ({ ...t, [id]: tab })) }
+
+  function formatDate(iso) {
+    if (!iso) return ''
+    return new Date(iso).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })
+  }
+  function formatTime(iso) {
+    if (!iso) return ''
+    return new Date(iso).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }) +
+      ' · ' + new Date(iso).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })
+  }
+
   if (loading) return <div className="flex items-center justify-center py-20"><Spinner size={28} light={false} /></div>
   if (error)   return <ErrorBanner message={error} onRetry={load} />
 
   const stats = {
-    total:   pods.length,
-    active:  pods.filter(p => p.status === 'active').length,
-    review:  pods.filter(p => p.status === 'review').length,
-    passed:  pods.filter(p => ['passed','released'].includes(p.status)).length,
+    total:          pods.length,
+    pending_escrow: pods.filter(p => p.status === 'pending_escrow').length,
+    active:         pods.filter(p => p.status === 'active').length,
+    review:         pods.filter(p => p.status === 'review').length,
+    passed:         pods.filter(p => ['passed', 'released'].includes(p.status)).length,
   }
+
+  const FILTERS = ['all', 'forming', 'pending_split', 'pending_escrow', 'active', 'review', 'passed', 'failed', 'released']
+  const filtered = filter === 'all' ? pods : pods.filter(p => p.status === filter)
 
   return (
     <div>
       {/* Stats */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4 mb-8">
+      <div className="grid grid-cols-2 sm:grid-cols-5 gap-3 mb-8">
         {[
-          { n: stats.total,  lbl: 'Total Pods',  sub: 'All time'         },
-          { n: stats.active, lbl: 'Active',      sub: 'Work in progress' },
-          { n: stats.review, lbl: 'In Review',   sub: 'Awaiting verdict' },
-          { n: stats.passed, lbl: 'Passed',      sub: 'Escrow eligible'  },
+          { n: stats.total,          lbl: 'Total',          sub: 'All pods'          },
+          { n: stats.pending_escrow, lbl: 'Awaiting Escrow',sub: 'Funded by project' },
+          { n: stats.active,         lbl: 'Active',         sub: 'Work in progress'  },
+          { n: stats.review,         lbl: 'In Review',      sub: 'Awaiting verdict'  },
+          { n: stats.passed,         lbl: 'Passed',         sub: 'Escrow eligible'   },
         ].map(s => (
           <div key={s.lbl} className="bg-white border border-black/[0.07] rounded-[12px] px-4 py-4">
-            <span className="font-serif text-[26px] sm:text-[28px] font-light text-ink tracking-[-0.05em] block leading-none mb-1">{s.n}</span>
+            <span className="font-serif text-[26px] font-light text-ink tracking-[-0.05em] block leading-none mb-1">{s.n}</span>
             <span className="font-medium text-[11.5px] text-ink block mb-0.5">{s.lbl}</span>
             <span className="text-[11px] font-light text-[#AAA]">{s.sub}</span>
           </div>
         ))}
       </div>
 
-      {/* Note */}
-      <div className="flex items-start gap-3 bg-[#F3F4F6] border border-black/[0.06] rounded-[10px] px-4 py-3.5 mb-6">
+      {/* Info banner */}
+      <div className="flex items-start gap-3 bg-[#F3F4F6] border border-black/[0.06] rounded-[10px] px-4 py-3.5 mb-5">
         <i className="bi bi-info-circle text-[13px] text-[#999] flex-shrink-0 mt-0.5" />
         <p className="text-[13px] font-light text-[#888] leading-snug">
-          Pods are created by users. Your role is to review deliverables and pass or fail the project once work is submitted.
-          Passing a project unlocks the escrow claim for pod members.
+          Pods are created by users. Review deliverables, check the split agreement, then pass or fail.
+          Passing unlocks escrow claims for pod members. All deliverables must be approved before you can pass.
         </p>
       </div>
 
-      {pods.length === 0 ? (
+      {/* Status filter */}
+      <div className="flex gap-1.5 flex-wrap mb-6">
+        {FILTERS.map(f => (
+          <button key={f} onClick={() => setFilter(f)}
+            className={`font-mono text-[10px] tracking-[0.08em] uppercase px-3 py-1.5 rounded-full border transition-all cursor-pointer
+              ${filter === f ? 'bg-ink text-paper border-transparent' : 'text-[#AAA] border-black/[0.1] bg-transparent hover:border-black/20'}`}>
+            {f === 'all' ? `All (${pods.length})` : f.replace('_', ' ')}
+          </button>
+        ))}
+      </div>
+
+      {filtered.length === 0 ? (
         <div className="py-20 text-center">
           <i className="bi bi-people text-[40px] text-[#E0E0E0] block mb-4" />
-          <p className="text-[14px] font-light text-[#C8C8C8]">No pods yet</p>
+          <p className="text-[14px] font-light text-[#C8C8C8]">
+            {pods.length === 0 ? 'No pods yet' : 'No pods match this filter'}
+          </p>
         </div>
       ) : (
         <div className="space-y-3">
-          {pods.map(pod => (
-            <div key={pod.id} className="bg-white border border-black/[0.07] rounded-[14px] overflow-hidden">
-              {/* Pod header row */}
-              <div
-                className="flex items-center gap-4 px-6 py-4 cursor-pointer hover:bg-black/[0.01] transition-colors"
-                onClick={() => setExpanded(e => e === pod.id ? null : pod.id)}
-              >
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-3 flex-wrap">
-                    <span className="text-[14px] font-medium text-ink tracking-[-0.01em]">{pod.name}</span>
-                    <PodStatusBadge status={pod.status} />
-                  </div>
-                  <div className="flex items-center gap-4 mt-1 flex-wrap">
-                    <span className="text-[12.5px] font-light text-[#999]">{pod.project ?? '—'}</span>
-                    <span className="font-mono text-[10px] text-[#CCC]">{pod.memberCount ?? pod.members?.length ?? 0} members</span>
-                    {pod.escrowAmount && (
-                      <span className="font-mono text-[10px] text-[#1DC433]">{pod.escrowAmount} USDC</span>
-                    )}
-                    <span className="font-mono text-[10px] text-[#CCC]">{pod.createdAt ? new Date(pod.createdAt).toLocaleDateString('en-GB', { day:'numeric', month:'short', year:'numeric'}) : ''}</span>
-                  </div>
-                </div>
+          {filtered.map(pod => {
+            const allDelivApproved = pod.deliverables?.length > 0 &&
+              pod.deliverables.every(d => d.status === 'approved')
+            const splitTotal = pod.members?.reduce((s, m) => s + (m.splitPercent ?? 0), 0) ?? 0
+            const isExpanded = expanded === pod.id
+            const tab = podTab(pod.id)
 
-                {/* Actions */}
-                <div className="flex items-center gap-2 flex-shrink-0" onClick={e => e.stopPropagation()}>
-                  {pod.status === 'review' && (
-                    <>
+            return (
+              <div key={pod.id} className="bg-white border border-black/[0.07] rounded-[14px] overflow-hidden">
+
+                {/* Pod header */}
+                <div
+                  className="flex items-center gap-4 px-6 py-4 cursor-pointer hover:bg-black/[0.01] transition-colors"
+                  onClick={() => setExpanded(e => e === pod.id ? null : pod.id)}
+                >
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-3 flex-wrap">
+                      <span className="text-[14px] font-medium text-ink tracking-[-0.01em]">{pod.name}</span>
+                      <PodStatusBadge status={pod.status} />
+                      {/* Escrow funded indicator */}
+                      {pod.escrowFunded && (
+                        <span className="font-mono text-[9px] tracking-[0.1em] uppercase bg-green/10 text-green-dark border border-green/20 px-2 py-0.5 rounded-full flex items-center gap-1">
+                          <i className="bi bi-safe2 text-[9px]" /> Escrow funded
+                        </span>
+                      )}
+                      {pod.splitLocked && (
+                        <span className="font-mono text-[9px] tracking-[0.1em] uppercase text-[#999] flex items-center gap-1">
+                          <i className="bi bi-lock-fill text-[9px]" /> Split locked
+                        </span>
+                      )}
+                    </div>
+                    <div className="flex items-center gap-4 mt-1 flex-wrap">
+                      {pod.projectName && (
+                        <span className="text-[12.5px] font-light text-[#666]">
+                          <i className="bi bi-buildings text-[10px] mr-1 text-[#BBB]" />
+                          {pod.projectName}
+                        </span>
+                      )}
+                      {pod.projectOwner && (
+                        <span className="text-[12px] font-light text-[#999]">
+                          by {pod.projectOwner}
+                        </span>
+                      )}
+                      <span className="font-mono text-[10px] text-[#CCC]">
+                        {pod.memberCount ?? pod.members?.length ?? 0} members
+                      </span>
+                      {pod.escrowAmount && (
+                        <span className="font-mono text-[10px] text-[#1DC433] font-medium">
+                          {pod.escrowAmount} USDC
+                        </span>
+                      )}
+                      <span className="font-mono text-[10px] text-[#CCC]">{formatDate(pod.createdAt)}</span>
+                    </div>
+                  </div>
+
+                  {/* Action buttons */}
+                  <div className="flex items-center gap-2 flex-shrink-0" onClick={e => e.stopPropagation()}>
+                    {pod.status === 'review' && (
+                      <>
+                        <button
+                          onClick={() => handlePass(pod)}
+                          disabled={acting === pod.id || !allDelivApproved}
+                          title={!allDelivApproved ? 'All deliverables must be approved first' : ''}
+                          className="flex items-center gap-1.5 text-[11px] font-medium text-ink bg-[#2DFC44] px-3 py-1.5 rounded-full hover:bg-[#1DC433] transition-colors border-none cursor-pointer font-mono tracking-wide disabled:opacity-40 disabled:cursor-not-allowed whitespace-nowrap"
+                        >
+                          {acting === pod.id ? <Spinner size={12} /> : <i className="bi bi-check-lg" />}
+                          {allDelivApproved ? 'Pass' : 'Pass (pending)'}
+                        </button>
+                        <button
+                          onClick={() => setFailing(pod)}
+                          disabled={acting === pod.id}
+                          className="flex items-center gap-1.5 text-[11px] font-medium text-[#999] border border-black/[0.1] px-3 py-1.5 rounded-full hover:border-red-300 hover:text-red-500 transition-colors bg-transparent cursor-pointer font-mono tracking-wide disabled:opacity-50 whitespace-nowrap"
+                        >
+                          <i className="bi bi-x" /> Fail
+                        </button>
+                      </>
+                    )}
+                    {pod.status === 'passed' && (
                       <button
-                        onClick={() => handlePass(pod)}
+                        onClick={() => handleRelease(pod)}
                         disabled={acting === pod.id}
                         className="flex items-center gap-1.5 text-[11px] font-medium text-ink bg-[#2DFC44] px-3 py-1.5 rounded-full hover:bg-[#1DC433] transition-colors border-none cursor-pointer font-mono tracking-wide disabled:opacity-50 whitespace-nowrap"
                       >
-                        {acting === pod.id ? <Spinner size={12} /> : <i className="bi bi-check-lg" />} Pass
+                        {acting === pod.id ? <Spinner size={12} /> : <i className="bi bi-safe2" />} Release Escrow
                       </button>
-                      <button
-                        onClick={() => setFailing(pod)}
-                        disabled={acting === pod.id}
-                        className="flex items-center gap-1.5 text-[11px] font-medium text-[#999] border border-black/[0.1] px-3 py-1.5 rounded-full hover:border-red-300 hover:text-red-500 transition-colors bg-transparent cursor-pointer font-mono tracking-wide disabled:opacity-50 whitespace-nowrap"
-                      >
-                        <i className="bi bi-x" /> Fail
-                      </button>
-                    </>
-                  )}
-                  {pod.status === 'passed' && (
-                    <button
-                      onClick={() => handleRelease(pod)}
-                      disabled={acting === pod.id}
-                      className="flex items-center gap-1.5 text-[11px] font-medium text-ink bg-[#2DFC44] px-3 py-1.5 rounded-full hover:bg-[#1DC433] transition-colors border-none cursor-pointer font-mono tracking-wide disabled:opacity-50 whitespace-nowrap"
-                    >
-                      {acting === pod.id ? <Spinner size={12} /> : <i className="bi bi-safe2" />} Release Escrow
+                    )}
+                    {pod.status === 'released' && (
+                      <span className="font-mono text-[10px] text-[#1DC433] flex items-center gap-1">
+                        <i className="bi bi-check2-circle" /> Released
+                      </span>
+                    )}
+                    <button className="w-7 h-7 flex items-center justify-center text-[#CCC] hover:text-ink transition-colors bg-transparent border-none cursor-pointer">
+                      <i className={`bi bi-chevron-${isExpanded ? 'up' : 'down'} text-[11px]`} />
                     </button>
-                  )}
-                  {pod.status === 'released' && (
-                    <span className="font-mono text-[10px] text-[#1DC433] flex items-center gap-1">
-                      <i className="bi bi-check2-circle" /> Escrow released
-                    </span>
-                  )}
-                  <button
-                    className="w-7 h-7 flex items-center justify-center text-[#CCC] hover:text-ink transition-colors bg-transparent border-none cursor-pointer"
-                  >
-                    <i className={`bi bi-chevron-${expanded === pod.id ? 'up' : 'down'} text-[11px]`} />
-                  </button>
+                  </div>
                 </div>
-              </div>
 
-              {/* Expanded: deliverables + members + split */}
-              {expanded === pod.id && (
-                <div className="border-t border-black/[0.05] px-6 py-5 space-y-5 bg-[#FAFAF8]"
-                  style={{ animation: 'up 0.2s both' }}>
+                {/* Expanded panel */}
+                {isExpanded && (
+                  <div className="border-t border-black/[0.05] bg-[#FAFAF8]" style={{ animation: 'up 0.2s both' }}>
 
-                  {/* Members + split */}
-                  {pod.members && pod.members.length > 0 && (
-                    <div>
-                      <p className="font-mono text-[10px] tracking-[0.12em] uppercase text-[#AAA] mb-3">Pod Members & Agreed Split</p>
-                      <div className="space-y-2">
-                        {pod.members.map((m, i) => (
-                          <div key={i} className="flex items-center gap-3">
-                            <div className="w-7 h-7 rounded-full bg-black/[0.06] flex items-center justify-center flex-shrink-0">
-                              <span className="font-mono text-[9px] text-[#888]">
-                                {(m.name || '?').split(' ').map(w => w[0]).slice(0,2).join('')}
-                              </span>
+                    {/* Sub-tabs */}
+                    <div className="flex gap-0 border-b border-black/[0.05] px-6">
+                      {[
+                        { key: 'details',      label: 'Details',      icon: 'bi-card-list'   },
+                        { key: 'split',        label: 'Split',        icon: 'bi-pie-chart'   },
+                        { key: 'deliverables', label: 'Deliverables', icon: 'bi-check2-square' },
+                        { key: 'chat',         label: 'Split Chat',   icon: 'bi-chat-dots'   },
+                      ].map(t => (
+                        <button key={t.key}
+                          onClick={() => setPodTab(pod.id, t.key)}
+                          className={`flex items-center gap-1.5 px-4 py-3 text-[12px] border-b-2 transition-all bg-transparent cursor-pointer -mb-px whitespace-nowrap
+                            ${tab === t.key ? 'border-ink text-ink font-medium' : 'border-transparent text-[#AAA] hover:text-[#666] font-light'}`}>
+                          <i className={`bi ${t.icon} text-[12px]`} />
+                          {t.label}
+                        </button>
+                      ))}
+                    </div>
+
+                    <div className="px-6 py-5">
+
+                      {/* ── Details tab ── */}
+                      {tab === 'details' && (
+                        <div className="space-y-4">
+                          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                            {[
+                              { label: 'Pod Admin',    value: pod.podAdmin ?? '—'                             },
+                              { label: 'Project',      value: pod.projectName ?? '—'                          },
+                              { label: 'Project Owner',value: pod.projectOwner ?? '—'                         },
+                              { label: 'Escrow',       value: pod.escrowAmount ? `${pod.escrowAmount} USDC` : 'Not funded' },
+                            ].map(item => (
+                              <div key={item.label} className="bg-white border border-black/[0.06] rounded-[10px] px-4 py-3">
+                                <p className="font-mono text-[9.5px] tracking-[0.1em] uppercase text-[#CCC] mb-1">{item.label}</p>
+                                <p className="text-[13px] font-light text-ink">{item.value}</p>
+                              </div>
+                            ))}
+                          </div>
+                          {/* Escrow status */}
+                          <div className={`flex items-center gap-3 px-4 py-3 rounded-[10px] border ${pod.escrowFunded ? 'bg-green/5 border-green/20' : 'bg-amber-50 border-amber-200'}`}>
+                            <i className={`bi ${pod.escrowFunded ? 'bi-safe2 text-green-dark' : 'bi-hourglass-split text-amber-600'} text-[14px]`} />
+                            <div>
+                              <p className={`text-[13px] font-medium ${pod.escrowFunded ? 'text-green-dark' : 'text-amber-700'}`}>
+                                {pod.escrowFunded ? `Escrow funded — ${pod.escrowAmount} USDC locked` : 'Waiting for project owner to deposit USDC'}
+                              </p>
+                              {pod.escrowFundedAt && (
+                                <p className="font-mono text-[10px] text-[#AAA]">Funded {formatDate(pod.escrowFundedAt)}</p>
+                              )}
                             </div>
-                            <span className="text-[13px] font-light text-ink flex-1">{m.name ?? m.talentId}</span>
-                            <span className="font-mono text-[11px] text-[#888]">{m.role}</span>
-                            {m.splitPercent != null && (
-                              <span className="font-mono text-[11px] text-[#1DC433] font-medium w-12 text-right">{m.splitPercent}%</span>
+                          </div>
+                        </div>
+                      )}
+
+                      {/* ── Split tab ── */}
+                      {tab === 'split' && (
+                        <div>
+                          <div className="flex items-center justify-between mb-4">
+                            <p className="font-mono text-[10px] tracking-[0.12em] uppercase text-[#AAA]">
+                              Pod Members & Agreed Split
+                            </p>
+                            {pod.splitLocked ? (
+                              <span className="font-mono text-[10px] text-[#1DC433] flex items-center gap-1">
+                                <i className="bi bi-lock-fill text-[9px]" /> Locked on-chain
+                              </span>
+                            ) : (
+                              <span className="font-mono text-[10px] text-amber-600 flex items-center gap-1">
+                                <i className="bi bi-unlock text-[9px]" /> Not yet locked
+                              </span>
                             )}
                           </div>
-                        ))}
-                      </div>
-                      {pod.splitLocked && (
-                        <p className="font-mono text-[10px] text-[#1DC433] mt-2 flex items-center gap-1">
-                          <i className="bi bi-lock-fill text-[9px]" /> Split locked on-chain
-                        </p>
-                      )}
-                    </div>
-                  )}
 
-                  {/* Deliverables */}
-                  {pod.deliverables && pod.deliverables.length > 0 && (
-                    <div>
-                      <p className="font-mono text-[10px] tracking-[0.12em] uppercase text-[#AAA] mb-3">Deliverables</p>
-                      <div className="space-y-2">
-                        {pod.deliverables.map((d, i) => (
-                          <div key={i} className="flex items-start gap-3 bg-white border border-black/[0.06] rounded-[10px] px-4 py-3">
-                            <div className={`w-5 h-5 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5 ${d.status === 'approved' ? 'bg-[#2DFC44]' : d.status === 'submitted' ? 'bg-amber-100' : 'bg-black/[0.05]'}`}>
-                              <i className={`bi text-[10px] ${d.status === 'approved' ? 'bi-check text-ink' : d.status === 'submitted' ? 'bi-clock text-amber-600' : 'bi-circle text-[#CCC]'}`} />
-                            </div>
-                            <div className="flex-1 min-w-0">
-                              <p className="text-[13px] font-medium text-ink tracking-[-0.01em]">{d.title}</p>
-                              {d.description && <p className="text-[12px] font-light text-[#888] mt-0.5">{d.description}</p>}
-                              <div className="flex items-center gap-3 mt-1">
-                                {d.dueDate && <span className="font-mono text-[10px] text-[#CCC]">Due {new Date(d.dueDate).toLocaleDateString('en-GB', { day:'numeric', month:'short' })}</span>}
-                                {d.amount  && <span className="font-mono text-[10px] text-[#1DC433]">{d.amount} USDC</span>}
+                          {pod.members && pod.members.length > 0 ? (
+                            <div className="space-y-2">
+                              {pod.members.map((m, i) => (
+                                <div key={i} className="flex items-center gap-3 bg-white border border-black/[0.06] rounded-[10px] px-4 py-3">
+                                  <div className="w-8 h-8 rounded-full bg-black/[0.06] flex items-center justify-center flex-shrink-0">
+                                    <span className="font-mono text-[10px] text-[#888]">
+                                      {(m.name || '?').split(' ').map(w => w[0]).slice(0, 2).join('')}
+                                    </span>
+                                  </div>
+                                  <div className="flex-1 min-w-0">
+                                    <p className="text-[13px] font-medium text-ink">{m.name ?? m.talentId}</p>
+                                    <p className="font-mono text-[11px] text-[#AAA]">{m.role}</p>
+                                  </div>
+                                  <div className="flex items-center gap-3 flex-shrink-0">
+                                    {m.splitPercent != null ? (
+                                      <>
+                                        {/* Visual bar */}
+                                        <div className="w-24 h-1.5 bg-black/[0.06] rounded-full overflow-hidden hidden sm:block">
+                                          <div className="h-full bg-[#1DC433] rounded-full" style={{ width: `${m.splitPercent}%` }} />
+                                        </div>
+                                        <span className="font-mono text-[13px] text-[#1DC433] font-medium w-10 text-right">
+                                          {m.splitPercent}%
+                                        </span>
+                                      </>
+                                    ) : (
+                                      <span className="font-mono text-[11px] text-[#CCC]">—</span>
+                                    )}
+                                  </div>
+                                </div>
+                              ))}
+
+                              {/* Total */}
+                              <div className="flex items-center justify-between pt-2 px-4">
+                                <span className="font-mono text-[10px] uppercase tracking-[0.1em] text-[#BBB]">Total</span>
+                                <span className={`font-mono text-[13px] font-medium ${splitTotal === 100 ? 'text-[#1DC433]' : 'text-red-500'}`}>
+                                  {splitTotal}% {splitTotal === 100 ? '✓' : `(${100 - splitTotal}% unallocated)`}
+                                </span>
                               </div>
                             </div>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  )}
+                          ) : (
+                            <p className="text-[13px] font-light text-[#BBB] py-4">Split not yet submitted by pod admin.</p>
+                          )}
+                        </div>
+                      )}
 
-                  {pod.deliverables?.length === 0 && pod.members?.length === 0 && (
-                    <p className="text-[13px] font-light text-[#BBB]">No details available yet.</p>
-                  )}
-                </div>
-              )}
-            </div>
-          ))}
+                      {/* ── Deliverables tab ── */}
+                      {tab === 'deliverables' && (
+                        <div>
+                          {pod.deliverables && pod.deliverables.length > 0 ? (
+                            <div className="space-y-2">
+                              {pod.deliverables.map((d, i) => (
+                                <div key={i} className="flex items-start gap-3 bg-white border border-black/[0.06] rounded-[10px] px-4 py-3.5">
+                                  <div className={`w-6 h-6 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5
+                                    ${d.status === 'approved' ? 'bg-[#2DFC44]' : d.status === 'submitted' ? 'bg-amber-100' : d.status === 'rejected' ? 'bg-red-100' : 'bg-black/[0.05]'}`}>
+                                    <i className={`bi text-[11px]
+                                      ${d.status === 'approved' ? 'bi-check text-ink' : d.status === 'submitted' ? 'bi-clock text-amber-600' : d.status === 'rejected' ? 'bi-x text-red-500' : 'bi-circle text-[#CCC]'}`} />
+                                  </div>
+                                  <div className="flex-1 min-w-0">
+                                    <div className="flex items-center gap-2 flex-wrap">
+                                      <p className="text-[13px] font-medium text-ink">{d.title}</p>
+                                      <span className={`font-mono text-[9px] tracking-[0.08em] uppercase px-2 py-0.5 rounded-full
+                                        ${d.status === 'approved' ? 'bg-green/10 text-green-dark' :
+                                          d.status === 'submitted' ? 'bg-amber-100 text-amber-700' :
+                                          d.status === 'rejected' ? 'bg-red-50 text-red-500' :
+                                          'bg-black/[0.04] text-[#AAA]'}`}>
+                                        {d.status ?? 'pending'}
+                                      </span>
+                                    </div>
+                                    {d.description && <p className="text-[12px] font-light text-[#888] mt-0.5">{d.description}</p>}
+                                    <div className="flex items-center gap-3 mt-1.5 flex-wrap">
+                                      {d.dueDate && <span className="font-mono text-[10px] text-[#CCC]">Due {formatDate(d.dueDate)}</span>}
+                                      {d.amount  && <span className="font-mono text-[10px] text-[#1DC433]">{d.amount} USDC</span>}
+                                    </div>
+                                  </div>
+                                </div>
+                              ))}
+
+                              {/* All approved indicator */}
+                              {allDelivApproved && (
+                                <div className="flex items-center gap-2 px-4 py-3 bg-green/5 border border-green/20 rounded-[10px]">
+                                  <i className="bi bi-check2-all text-[#1DC433] text-[14px]" />
+                                  <span className="text-[13px] font-medium text-green-dark">All deliverables approved — project can be passed</span>
+                                </div>
+                              )}
+                            </div>
+                          ) : (
+                            <p className="text-[13px] font-light text-[#BBB] py-4">No deliverables defined yet.</p>
+                          )}
+                        </div>
+                      )}
+
+                      {/* ── Split Chat tab ── */}
+                      {tab === 'chat' && (
+                        <div>
+                          <p className="font-mono text-[10px] tracking-[0.12em] uppercase text-[#AAA] mb-4">
+                            Split Discussion (read-only)
+                          </p>
+                          {pod.chatMessages && pod.chatMessages.length > 0 ? (
+                            <div className="space-y-3 max-h-[320px] overflow-y-auto pr-1">
+                              {pod.chatMessages.map((msg, i) => (
+                                <div key={i} className="flex gap-3">
+                                  <div className="w-7 h-7 rounded-full bg-black/[0.06] flex items-center justify-center flex-shrink-0 mt-0.5">
+                                    <span className="font-mono text-[9px] text-[#888]">
+                                      {(msg.senderName || '?').split(' ').map(w => w[0]).slice(0, 2).join('')}
+                                    </span>
+                                  </div>
+                                  <div className="flex-1">
+                                    <div className="flex items-baseline gap-2">
+                                      <span className="text-[12.5px] font-medium text-ink">{msg.senderName}</span>
+                                      <span className="font-mono text-[10px] text-[#CCC]">{formatTime(msg.sentAt)}</span>
+                                    </div>
+                                    <p className="text-[13px] font-light text-[#555] leading-snug mt-0.5">{msg.text}</p>
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          ) : (
+                            <div className="py-8 text-center">
+                              <i className="bi bi-chat-dots text-[28px] text-[#E0E0E0] block mb-2" />
+                              <p className="text-[13px] font-light text-[#CCC]">No messages yet</p>
+                            </div>
+                          )}
+                        </div>
+                      )}
+
+                    </div>
+                  </div>
+                )}
+              </div>
+            )
+          })}
         </div>
       )}
 
@@ -965,7 +1180,8 @@ function PodsPanel({ showToast }) {
           <div className="bg-white rounded-[16px] shadow-2xl w-full max-w-[420px] p-7" style={{ animation: 'up 0.25s both' }}>
             <h3 className="font-serif text-[20px] font-light tracking-[-0.03em] text-ink mb-1">Fail this project?</h3>
             <p className="text-[13px] font-light text-[#888] mb-5">
-              <strong className="text-ink">{failing.name}</strong> will be marked as failed. Escrow will not be released.
+              <strong className="text-ink">{failing.name}</strong> will be marked as failed.
+              Escrow will be refunded to the project owner.
             </p>
             <label className="font-mono text-[10px] tracking-[0.12em] uppercase text-[#999] block mb-2">Reason (optional)</label>
             <textarea
@@ -976,17 +1192,12 @@ function PodsPanel({ showToast }) {
               className="w-full font-sans text-[13.5px] font-light bg-white border border-black/[0.09] rounded-[10px] px-4 py-3 outline-none focus:border-red-300 resize-none mb-5"
             />
             <div className="flex gap-2">
-              <button
-                onClick={() => handleFail(failing)}
-                disabled={acting === failing.id}
-                className="flex-1 flex items-center justify-center gap-2 bg-red-500 text-white py-3 rounded-[10px] font-sans text-[13.5px] font-medium hover:bg-red-600 transition-colors border-none cursor-pointer disabled:opacity-50"
-              >
+              <button onClick={() => handleFail(failing)} disabled={acting === failing.id}
+                className="flex-1 flex items-center justify-center gap-2 bg-red-500 text-white py-3 rounded-[10px] font-sans text-[13.5px] font-medium hover:bg-red-600 transition-colors border-none cursor-pointer disabled:opacity-50">
                 {acting === failing.id ? <Spinner size={16} /> : <i className="bi bi-x-circle" />} Confirm Fail
               </button>
-              <button
-                onClick={() => { setFailing(null); setFailReason('') }}
-                className="flex-1 py-3 rounded-[10px] border border-black/[0.09] text-[#888] font-sans text-[13.5px] font-light hover:border-black/20 transition-all bg-transparent cursor-pointer"
-              >
+              <button onClick={() => { setFailing(null); setFailReason('') }}
+                className="flex-1 py-3 rounded-[10px] border border-black/[0.09] text-[#888] font-sans text-[13.5px] font-light hover:border-black/20 transition-all bg-transparent cursor-pointer">
                 Cancel
               </button>
             </div>
@@ -1263,7 +1474,7 @@ function TeamPanel({ showToast, currentAdmin }) {
 const TABS = [
   { key: 'talents',  icon: 'bi-person-check', label: 'Talent Applications'  },
   { key: 'projects', icon: 'bi-buildings',    label: 'Project Applications' },
-  { key: 'pods',     icon: 'bi-people-fill',  label: 'Pods Review'                 },
+  { key: 'pods',     icon: 'bi-people-fill',  label: 'Pods Review'  },
   { key: 'team',     icon: 'bi-shield-lock',  label: 'Team',  ownerOnly: true },
 ]
 

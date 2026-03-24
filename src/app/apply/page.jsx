@@ -36,11 +36,11 @@ const inputErr  = `border-[#E53E3E] shadow-[0_0_0_3px_rgba(229,62,62,0.06)]`
 
 function Apply() {
   const params = useSearchParams()
-  const [mode, setMode]         = useState(params.get('type') === 'project' ? 'project' : 'talent')
+  const [mode, setMode] = useState(params.get('type') === 'project' ? 'project' : 'talent')
   const [consented, setConsented] = useState(false)
-  const [loading, setLoading]   = useState(false)
-  const [success, setSuccess]   = useState(false)
-  const [refId, setRefId]       = useState('')
+  const [loading, setLoading] = useState(false)
+  const [success, setSuccess] = useState(false)
+  const [refId, setRefId] = useState('')
   const [progress, setProgress] = useState(0)
 
   const [fields, setFields] = useState({ fn:'', ln:'', em:'', un:'', co:'' })
@@ -63,8 +63,8 @@ function Apply() {
     if (!fields.ln.trim())  errs.ln = 'Required'
     if (!fields.em.trim() || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(fields.em)) errs.em = 'Enter a valid email address'
     if (!fields.un.trim())  errs.un = 'Required'
-    if (!fields.co)         errs.co = 'Please select your country'
-    if (!consented)         errs.consent = true
+    if (!fields.co) errs.co = 'Please select your country'
+    if (!consented) errs.consent = true
     setErrors(errs)
     return Object.keys(errs).length === 0
   }
